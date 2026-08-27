@@ -1,0 +1,511 @@
+import type { AgentCategoryId, ListAgentsParams } from './contract';
+
+/**
+ * Fixtures for `NEXT_PUBLIC_DATA_SOURCE=mock`.
+ *
+ * These are SYNTHETIC. They exist so the frontend can be developed and its
+ * states exercised without a running backend or a synced database — nothing
+ * here is real on-chain data, and none of it is ever shown in `live` mode.
+ *
+ * They are shaped as the wire format (snake_case) and parsed through the same
+ * Zod contract as real responses, so a fixture that drifts from the API contract
+ * fails loudly rather than masking a mismatch.
+ *
+ * The set is chosen to cover states the happy path would miss: all four
+ * categories, an agent with no reputation, an agent whose metadata never
+ * resolved, and an agent spanning two categories.
+ */
+
+type WireAgent = {
+  identity: {
+    id: string;
+    chain_id: number;
+    agent_id: number;
+    owner_address: string;
+    wallet_address: string | null;
+    agent_uri: string | null;
+    registered_at_block: number | null;
+    registered_at: string | null;
+  };
+  profile: {
+    name: string;
+    description: string | null;
+    capabilities: string[];
+    protocol_tag: string;
+    trait_tags: string[];
+    metadata_resolved_at: string | null;
+  };
+  categories: {
+    category: string;
+    confidence: number;
+    is_primary: boolean;
+    signals: string[];
+    classifier_version: string;
+  }[];
+  reputation: {
+    feedback_count: number;
+    client_count: number;
+    summary_value: number | null;
+    summary_decimals: number | null;
+    score: number | null;
+    source: string;
+    computed_at: string;
+  } | null;
+};
+
+const SOURCE = 'mock:fixture';
+const CLASSIFIER = 'rules-v1';
+
+const address = (seed: string): string => `0x${seed.repeat(40).slice(0, 40)}`;
+
+const MOCK_AGENTS: WireAgent[] = [
+  {
+    identity: {
+      id: '56:900001',
+      chain_id: 56,
+      agent_id: 900001,
+      owner_address: address('a1'),
+      wallet_address: address('a2'),
+      agent_uri: 'ipfs://example-rebalancer',
+      registered_at_block: 118_000_001,
+      registered_at: '2026-06-01T09:15:00.000Z',
+    },
+    profile: {
+      name: 'Meridian Rebalancer',
+      description:
+        'Monitors a portfolio against its target allocation and trades back to target weights whenever drift exceeds a configured threshold band.',
+      capabilities: ['rebalance', 'allocation', 'portfolio'],
+      protocol_tag: 'a2a',
+      trait_tags: ['declared-active', 'reputation-trust'],
+      metadata_resolved_at: '2026-06-01T09:20:00.000Z',
+    },
+    categories: [
+      {
+        category: 'rebalancing',
+        confidence: 1,
+        is_primary: true,
+        signals: ['capability:rebalance', 'phrase:target allocation', 'phrase:threshold band'],
+        classifier_version: CLASSIFIER,
+      },
+    ],
+    // 462 at 2dp renders as 4.62 — exercises the fixed-point decoding path.
+    reputation: {
+      feedback_count: 41,
+      client_count: 28,
+      summary_value: 462,
+      summary_decimals: 2,
+      score: 4.62,
+      source: SOURCE,
+      computed_at: '2026-08-27T10:00:00.000Z',
+    },
+  },
+  {
+    identity: {
+      id: '56:900002',
+      chain_id: 56,
+      agent_id: 900002,
+      owner_address: address('b1'),
+      wallet_address: address('b2'),
+      agent_uri: 'ipfs://example-grid',
+      registered_at_block: 118_000_120,
+      registered_at: '2026-06-04T14:02:00.000Z',
+    },
+    profile: {
+      name: 'Tidewater Grid',
+      description:
+        'Runs a grid trading strategy across a configurable price grid, working the range with a ladder of staggered orders.',
+      capabilities: ['grid-trading', 'market-making'],
+      protocol_tag: 'mcp',
+      trait_tags: ['x402-paid', 'declared-active'],
+      metadata_resolved_at: '2026-06-04T14:06:00.000Z',
+    },
+    categories: [
+      {
+        category: 'grid-trading',
+        confidence: 1,
+        is_primary: true,
+        signals: ['capability:grid-trading', 'phrase:grid trading', 'phrase:price grid'],
+        classifier_version: CLASSIFIER,
+      },
+    ],
+    reputation: {
+      feedback_count: 12,
+      client_count: 9,
+      summary_value: 388,
+      summary_decimals: 2,
+      score: 3.88,
+      source: SOURCE,
+      computed_at: '2026-08-27T10:00:00.000Z',
+    },
+  },
+  {
+    identity: {
+      id: '56:900003',
+      chain_id: 56,
+      agent_id: 900003,
+      owner_address: address('c1'),
+      wallet_address: null,
+      agent_uri: 'ipfs://example-yield',
+      registered_at_block: 118_000_400,
+      registered_at: '2026-06-11T08:44:00.000Z',
+    },
+    profile: {
+      name: 'Kelp Yield Router',
+      description:
+        'Seeks the highest risk-adjusted yield across lending markets and will auto-compound rewards on a schedule.',
+      capabilities: ['yield', 'autocompound', 'vault'],
+      protocol_tag: 'a2a',
+      trait_tags: ['multichain', 'declared-active'],
+      metadata_resolved_at: '2026-06-11T08:49:00.000Z',
+    },
+    categories: [
+      {
+        category: 'yield-optimization',
+        confidence: 1,
+        is_primary: true,
+        signals: ['capability:yield', 'phrase:auto-compound', 'phrase:risk-adjusted yield'],
+        classifier_version: CLASSIFIER,
+      },
+    ],
+    // No feedback yet: `score: null` must render as "no reputation", not "0".
+    reputation: {
+      feedback_count: 0,
+      client_count: 0,
+      summary_value: null,
+      summary_decimals: null,
+      score: null,
+      source: SOURCE,
+      computed_at: '2026-08-27T10:00:00.000Z',
+    },
+  },
+  {
+    identity: {
+      id: '56:900004',
+      chain_id: 56,
+      agent_id: 900004,
+      owner_address: address('d1'),
+      wallet_address: address('d2'),
+      agent_uri: 'ipfs://example-health',
+      registered_at_block: 118_001_010,
+      registered_at: '2026-07-02T19:30:00.000Z',
+    },
+    profile: {
+      name: 'Ballast Health Monitor',
+      description:
+        'Tracks the health factor of leveraged lending positions and repays debt or tops up collateral before liquidation risk becomes critical.',
+      capabilities: ['health-factor', 'liquidation-protection', 'collateral'],
+      protocol_tag: 'a2a',
+      trait_tags: ['tee-attested', 'declared-active', 'reputation-trust'],
+      metadata_resolved_at: '2026-07-02T19:35:00.000Z',
+    },
+    categories: [
+      {
+        category: 'health-factor-monitoring',
+        confidence: 1,
+        is_primary: true,
+        signals: ['capability:health-factor', 'phrase:health factor', 'phrase:liquidation risk'],
+        classifier_version: CLASSIFIER,
+      },
+    ],
+    reputation: {
+      feedback_count: 77,
+      client_count: 51,
+      summary_value: 481,
+      summary_decimals: 2,
+      score: 4.81,
+      source: SOURCE,
+      computed_at: '2026-08-27T10:00:00.000Z',
+    },
+  },
+  {
+    identity: {
+      id: '56:900005',
+      chain_id: 56,
+      agent_id: 900005,
+      owner_address: address('e1'),
+      wallet_address: address('e2'),
+      agent_uri: 'ipfs://example-multi',
+      registered_at_block: 118_001_500,
+      registered_at: '2026-07-19T11:11:00.000Z',
+    },
+    profile: {
+      name: 'Fjord Treasury Manager',
+      description:
+        'Rebalances a treasury to its target allocation and rotates idle capital into the best available yield with auto-compound vault strategies.',
+      capabilities: ['rebalance', 'yield', 'vault'],
+      protocol_tag: 'mcp',
+      trait_tags: ['x402-paid', 'multichain', 'declared-active'],
+      metadata_resolved_at: '2026-07-19T11:14:00.000Z',
+    },
+    // Genuinely spans two categories — exercises secondary-category rendering.
+    categories: [
+      {
+        category: 'rebalancing',
+        confidence: 1,
+        is_primary: true,
+        signals: ['capability:rebalance', 'phrase:target allocation'],
+        classifier_version: CLASSIFIER,
+      },
+      {
+        category: 'yield-optimization',
+        confidence: 0.8,
+        is_primary: false,
+        signals: ['capability:yield', 'capability:vault', 'phrase:auto-compound'],
+        classifier_version: CLASSIFIER,
+      },
+    ],
+    reputation: {
+      feedback_count: 23,
+      client_count: 17,
+      summary_value: 425,
+      summary_decimals: 2,
+      score: 4.25,
+      source: SOURCE,
+      computed_at: '2026-08-27T10:00:00.000Z',
+    },
+  },
+  {
+    identity: {
+      id: '56:900006',
+      chain_id: 56,
+      agent_id: 900006,
+      owner_address: address('f1'),
+      wallet_address: address('f2'),
+      agent_uri: 'ipfs://example-unresolved',
+      registered_at_block: 118_002_200,
+      registered_at: '2026-08-20T06:05:00.000Z',
+    },
+    // Metadata never resolved: identity is on-chain and real, the off-chain
+    // document is not readable. The UI must show it as partial, not hide it.
+    profile: {
+      name: 'Agent #900006',
+      description: null,
+      capabilities: [],
+      protocol_tag: 'unconfigured',
+      trait_tags: [],
+      metadata_resolved_at: null,
+    },
+    categories: [
+      {
+        category: 'uncategorized',
+        confidence: 0,
+        is_primary: true,
+        signals: ['no-signal-match'],
+        classifier_version: CLASSIFIER,
+      },
+    ],
+    reputation: null,
+  },
+];
+
+const CATEGORY_META: { id: string; label: string; description: string }[] = [
+  {
+    id: 'rebalancing',
+    label: 'Rebalancing',
+    description:
+      'Monitors a portfolio against a target allocation and trades it back into line when weights drift.',
+  },
+  {
+    id: 'grid-trading',
+    label: 'Grid Trading',
+    description:
+      'Places a ladder of staggered orders across a price range and works the range as the market oscillates.',
+  },
+  {
+    id: 'yield-optimization',
+    label: 'Yield Optimization',
+    description:
+      'Finds and rotates capital toward the strongest risk-adjusted yield, compounding rewards along the way.',
+  },
+  {
+    id: 'health-factor-monitoring',
+    label: 'Health Factor Monitoring',
+    description:
+      'Watches leveraged lending positions and acts or warns before liquidation risk becomes critical.',
+  },
+];
+
+/** Mirrors the backend's filter and sort semantics closely enough to build against. */
+export function mockListAgents(params: ListAgentsParams) {
+  let rows = [...MOCK_AGENTS];
+
+  if (params.category) {
+    rows = rows.filter((row) => row.categories.some((c) => c.category === params.category));
+  }
+  if (params.protocol) {
+    rows = rows.filter((row) => row.profile.protocol_tag === params.protocol);
+  }
+  if (params.q) {
+    const term = params.q.toLowerCase();
+    rows = rows.filter(
+      (row) =>
+        row.profile.name.toLowerCase().includes(term) ||
+        (row.profile.description ?? '').toLowerCase().includes(term),
+    );
+  }
+  if (params.trait && params.trait.length > 0) {
+    const required = params.trait;
+    rows = rows.filter((row) => required.every((trait) => row.profile.trait_tags.includes(trait)));
+  }
+  if (params.resolvedOnly === true) {
+    rows = rows.filter((row) => row.profile.metadata_resolved_at !== null);
+  }
+
+  const direction = params.direction === 'asc' ? 1 : -1;
+  rows.sort((a, b) => {
+    switch (params.sort) {
+      case 'name':
+        return a.profile.name.localeCompare(b.profile.name) * direction;
+      case 'feedback':
+        return ((a.reputation?.feedback_count ?? -1) - (b.reputation?.feedback_count ?? -1)) * direction;
+      case 'reputation':
+        return ((a.reputation?.score ?? -1) - (b.reputation?.score ?? -1)) * direction;
+      default:
+        return (
+          (Date.parse(a.identity.registered_at ?? '0') -
+            Date.parse(b.identity.registered_at ?? '0')) *
+          direction
+        );
+    }
+  });
+
+  const page = params.page ?? 1;
+  const perPage = params.perPage ?? 24;
+  const start = (page - 1) * perPage;
+
+  return {
+    data: rows.slice(start, start + perPage),
+    meta: {
+      page,
+      per_page: perPage,
+      total: rows.length,
+      total_pages: Math.max(1, Math.ceil(rows.length / perPage)),
+    },
+  };
+}
+
+export function mockAgentDetail(id: string) {
+  const agent = MOCK_AGENTS.find((row) => row.identity.id === id);
+  return agent ? { data: agent } : null;
+}
+
+export function mockListCategories() {
+  const counts = new Map<string, number>();
+  for (const agent of MOCK_AGENTS) {
+    const primary = agent.categories.find((c) => c.is_primary);
+    if (primary) counts.set(primary.category, (counts.get(primary.category) ?? 0) + 1);
+  }
+
+  const data = CATEGORY_META.map((meta) => ({ ...meta, agent_count: counts.get(meta.id) ?? 0 }));
+
+  const uncategorized = counts.get('uncategorized') ?? 0;
+  if (uncategorized > 0) {
+    data.push({
+      id: 'uncategorized',
+      label: 'Uncategorized',
+      description:
+        'Indexed agents the classifier could not confidently place in a category. Shown rather than hidden so gaps in the taxonomy stay visible.',
+      agent_count: uncategorized,
+    });
+  }
+
+  return { data, meta: { total_agents: MOCK_AGENTS.length } };
+}
+
+/**
+ * Live-reputation fixture.
+ *
+ * Reports `origin: 'snapshot'` because a fixture is by definition not a live chain
+ * read, and saying otherwise would train the UI to trust a label it should not.
+ */
+export function mockReputation(id: string) {
+  const agent = MOCK_AGENTS.find((row) => row.identity.id === id);
+  if (!agent) return null;
+
+  const reputation = agent.reputation;
+
+  return {
+    data: {
+      agent_id: id,
+      feedback_count: reputation?.feedback_count ?? 0,
+      client_count: reputation?.client_count ?? 0,
+      summary_value: reputation?.summary_value ?? null,
+      summary_decimals: reputation?.summary_decimals ?? null,
+      score: reputation?.score ?? null,
+      origin: 'snapshot' as const,
+      computed_at: reputation?.computed_at ?? new Date().toISOString(),
+      notes:
+        reputation && reputation.feedback_count > 0
+          ? ['Mock data source; not a live registry read.']
+          : ['Mock data source; not a live registry read.', 'No client feedback recorded yet.'],
+      explorer: null,
+    },
+  };
+}
+
+/**
+ * Search fixture.
+ *
+ * Mirrors the deterministic vocabulary of the backend intent parser closely enough
+ * to build the interpretation UI against, without duplicating the whole rule set —
+ * the real parser lives in KATTEGAT-BE modules/search/search.intent.ts.
+ */
+export function mockSearch(query: string, page = 1, perPage = 24) {
+  const lower = query.toLowerCase();
+  const explanation: string[] = [];
+
+  // Typed as the real category union so a typo here is a compile error rather
+  // than a filter that silently matches nothing.
+  const categoryHints: { category: AgentCategoryId; terms: string[] }[] = [
+    { category: 'rebalancing', terms: ['rebalanc', 'allocation', 'portfolio'] },
+    { category: 'grid-trading', terms: ['grid', 'range', 'ladder'] },
+    { category: 'yield-optimization', terms: ['yield', 'apy', 'compound', 'farm'] },
+    { category: 'health-factor-monitoring', terms: ['health factor', 'liquidat', 'collateral'] },
+  ];
+
+  let category: AgentCategoryId | null = null;
+  for (const hint of categoryHints) {
+    const matched = hint.terms.find((term) => lower.includes(term));
+    if (matched) {
+      category = hint.category;
+      explanation.push(`Category "${hint.category}" from "${matched}"`);
+      break;
+    }
+  }
+
+  const protocol = ['a2a', 'mcp'].find((tag) => lower.includes(tag)) ?? null;
+  if (protocol) explanation.push(`Protocol "${protocol}"`);
+
+  const trackRecord = /conservative|proven|track record|safe/.test(lower);
+  if (trackRecord) explanation.push('Preference for a proven track record');
+
+  if (explanation.length === 0) explanation.push('No structured signals recognised');
+
+  const params: ListAgentsParams = { page, perPage };
+  if (category) params.category = category;
+  if (protocol) params.protocol = protocol;
+  if (trackRecord) params.resolvedOnly = true;
+
+  const result = mockListAgents(params);
+
+  return {
+    data: result.data,
+    meta: {
+      ...result.meta,
+      interpretation: {
+        query,
+        resolved_by: 'rules' as const,
+        filters: {
+          text: null,
+          category,
+          protocol,
+          traits: [],
+          resolved_only: trackRecord,
+          sort: 'registered_at',
+          direction: 'desc',
+        },
+        explanation,
+      },
+    },
+  };
+}

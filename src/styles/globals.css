@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+
+/*
+ * KATTEGAT design tokens.
+ *
+ * Tailwind v4 keeps the theme in CSS, so this file is the design system's single
+ * source of truth — every colour, radius, font and easing used in the product is
+ * declared once here and referenced by token name. Nothing in the app hardcodes a
+ * hex value.
+ *
+ * The palette is deliberately restrained: one deep neutral surface ramp, one
+ * accent, and semantic colours reserved for state. KATTEGAT presents financial
+ * data about autonomous agents that can move real funds, so colour carries
+ * meaning (risk, health, confidence) rather than decoration. Gradients and glass
+ * effects are absent on purpose.
+ */
+
+@theme {
+  /* --- Surfaces: a five-step ramp, darkest first ------------------------- */
+  --color-surface-base: oklch(17.5% 0.012 260);
+  --color-surface-raised: oklch(21% 0.014 260);
+  --color-surface-overlay: oklch(25% 0.016 260);
+  --color-surface-inset: oklch(14.5% 0.01 260);
+  --color-surface-hover: oklch(28% 0.018 260);
+
+  /* --- Borders ---------------------------------------------------------- */
+  --color-line-subtle: oklch(28% 0.012 260);
+  --color-line-strong: oklch(38% 0.015 260);
+
+  /* --- Text: four levels of emphasis ------------------------------------ */
+  --color-content-primary: oklch(97% 0.004 260);
+  --color-content-secondary: oklch(76% 0.011 260);
+  --color-content-muted: oklch(60% 0.013 260);
+  --color-content-faint: oklch(47% 0.012 260);
+
+  /*
+   * Accent. BNB Chain's brand yellow, pulled toward gold so it stays legible
+   * against the dark surfaces and does not read as a warning colour.
+   */
+  --color-accent: oklch(80% 0.155 85);
+  --color-accent-strong: oklch(85% 0.165 88);
+  --color-accent-muted: oklch(45% 0.075 85);
+  --color-accent-contrast: oklch(17% 0.02 85);
+
+  /* --- Semantic state. Never used decoratively. ------------------------- */
+  --color-positive: oklch(72% 0.15 155);
+  --color-positive-muted: oklch(35% 0.06 155);
+  --color-caution: oklch(78% 0.14 75);
+  --color-caution-muted: oklch(38% 0.06 75);
+  --color-critical: oklch(65% 0.19 22);
+  --color-critical-muted: oklch(35% 0.09 22);
+  --color-info: oklch(70% 0.12 240);
+  --color-info-muted: oklch(35% 0.06 240);
+
+  /* --- Type ------------------------------------------------------------- */
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /* --- Radii ------------------------------------------------------------ */
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+  --radius-pill: 9999px;
+
+  /*
+   * Shadows are low-contrast and used only to separate genuinely floating
+   * layers (dialogs, popovers). Cards are separated by border, not shadow.
+   */
+  --shadow-raised: 0 1px 2px 0 oklch(0% 0 0 / 0.3);
+  --shadow-overlay: 0 12px 32px -8px oklch(0% 0 0 / 0.55);
+
+  /* --- Motion ----------------------------------------------------------- */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --animate-duration-fast: 120ms;
+  --animate-duration-base: 200ms;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line-subtle);
+  }
+
+  html {
+    color-scheme: dark;
+    /* Anchor links land below the sticky header rather than under it. */
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background-color: var(--color-surface-base);
+    color: var(--color-content-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * Visible focus for keyboard users only. `:focus-visible` rather than
+   * `:focus` so a mouse click does not leave a ring behind, and never
+   * `outline: none` without a replacement.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+
+  /* Respect the OS "reduce motion" setting. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Visible only to assistive technology. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Indeterminate loading sweep for skeletons. */
+  @keyframes kattegat-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  .animate-skeleton {
+    animation: kattegat-pulse 1.6s var(--ease-out-quart) infinite;
+  }
+}

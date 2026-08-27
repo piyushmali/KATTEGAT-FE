@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+# Secrets — only .env.example is tracked.
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
+next-env.d.ts
