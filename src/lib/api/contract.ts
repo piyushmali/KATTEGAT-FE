@@ -15,15 +15,61 @@ import { z } from 'zod';
  * never carries the transport convention.
  */
 
+/**
+ * Category ids, mirroring KATTEGAT-BE `modules/classification/taxonomy.ts`.
+ *
+ * Must stay in step with the backend: these feed a Zod enum, so an id the backend
+ * starts returning that is missing here fails validation at the boundary rather
+ * than rendering wrong. That is the intended behaviour — a loud, located error —
+ * and `live-contract.test.ts` is what catches it.
+ */
 export const AGENT_CATEGORIES = [
+  // The four BNB Agent Studio launch categories.
   'rebalancing',
   'grid-trading',
   'yield-optimization',
   'health-factor-monitoring',
+  // Added after measuring what is actually registered on BNB Smart Chain.
+  'trading-execution',
+  'research-analytics',
+  'automation-operations',
+  'security-verification',
+  'code-smart-contracts',
+  'content-media',
   'uncategorized',
 ] as const;
 
 export type AgentCategoryId = (typeof AGENT_CATEGORIES)[number];
+
+/**
+ * Short display labels.
+ *
+ * Presentational only — the API is the source of truth for which categories exist
+ * and what they contain, and `/categories` ships a full label and description. These
+ * are the compact forms used where a badge has no room for "Health Factor
+ * Monitoring".
+ */
+export const CATEGORY_LABELS: Record<AgentCategoryId, string> = {
+  rebalancing: 'Rebalancing',
+  'grid-trading': 'Grid Trading',
+  'yield-optimization': 'Yield',
+  'health-factor-monitoring': 'Health Factor',
+  'trading-execution': 'Trading',
+  'research-analytics': 'Research',
+  'automation-operations': 'Automation',
+  'security-verification': 'Security',
+  'code-smart-contracts': 'Code',
+  'content-media': 'Content',
+  uncategorized: 'Unclassified',
+};
+
+/** The launch four, which stay visible in the UI even at zero agents. */
+export const LAUNCH_CATEGORIES: readonly AgentCategoryId[] = [
+  'rebalancing',
+  'grid-trading',
+  'yield-optimization',
+  'health-factor-monitoring',
+];
 
 export const agentIdentitySchema = z
   .object({
@@ -273,6 +319,41 @@ export const searchResponseSchema = z.object({
     })),
 });
 
+/* --------------------------------- stats ---------------------------------- */
+
+/**
+ * Marketplace counts for the landing page.
+ *
+ * Note what is absent: no volume, no success rate, no performance. ERC-8004 exposes
+ * none of those. `declaredActive` is the agent's own claim from its registration
+ * file, not an observation — the UI must label it as such.
+ */
+export const ecosystemStatsSchema = z
+  .object({
+    indexed_agents: z.number(),
+    declared_active: z.number(),
+    with_resolved_metadata: z.number(),
+    active_categories: z.number(),
+    classified_agents: z.number(),
+    feedback_records: z.number(),
+    rated_agents: z.number(),
+    owner_count: z.number(),
+    last_indexed_at: z.string().nullable(),
+  })
+  .transform((raw) => ({
+    indexedAgents: raw.indexed_agents,
+    declaredActive: raw.declared_active,
+    withResolvedMetadata: raw.with_resolved_metadata,
+    activeCategories: raw.active_categories,
+    classifiedAgents: raw.classified_agents,
+    feedbackRecords: raw.feedback_records,
+    ratedAgents: raw.rated_agents,
+    ownerCount: raw.owner_count,
+    lastIndexedAt: raw.last_indexed_at,
+  }));
+
+export const ecosystemStatsResponseSchema = z.object({ data: ecosystemStatsSchema });
+
 /** Error envelope. `code` is stable and safe to branch on for UX. */
 export const apiErrorSchema = z.object({
   error: z.object({
@@ -283,6 +364,7 @@ export const apiErrorSchema = z.object({
   }),
 });
 
+export type EcosystemStats = z.output<typeof ecosystemStatsSchema>;
 export type ReputationDetail = z.output<typeof reputationDetailSchema>;
 export type SearchInterpretation = z.output<typeof searchInterpretationSchema>;
 export type SearchResponse = z.output<typeof searchResponseSchema>;

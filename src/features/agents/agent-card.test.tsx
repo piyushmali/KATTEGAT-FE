@@ -48,7 +48,8 @@ describe('AgentCard', () => {
     // The fixture carries 462 at 2dp. Showing "462" would be the bug.
     expect(screen.getByText('4.62')).toBeInTheDocument();
     expect(screen.queryByText('462')).not.toBeInTheDocument();
-    expect(screen.getByText(/from 41 reviews/i)).toBeInTheDocument();
+    expect(screen.getByText(/41 reviews/i)).toBeInTheDocument();
+    expect(screen.getByText(/28 clients/i)).toBeInTheDocument();
   });
 
   it('reports absence of feedback rather than a zero score', () => {
@@ -62,10 +63,12 @@ describe('AgentCard', () => {
   it('still renders an agent whose registration file never resolved, and says so', () => {
     render(<AgentCard agent={byId('56:900006')} />);
 
-    // The agent is real — its identity is on chain — so it must not be hidden.
+    // The agent is real — its identity is on chain — so it must not be hidden, and the
+    // gap must be labelled rather than left as a silently empty card.
     expect(screen.getByText('Agent #900006')).toBeInTheDocument();
     expect(screen.getByText(/could not be resolved/i)).toBeInTheDocument();
-    expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    expect(screen.getByText(/metadata unresolved/i)).toBeInTheDocument();
+    expect(screen.getByText(/unclassified/i)).toBeInTheDocument();
   });
 
   it('signals additional categories for a multi-category agent', () => {
@@ -73,17 +76,27 @@ describe('AgentCard', () => {
     render(<AgentCard agent={byId('56:900005')} />);
 
     expect(screen.getByText('Rebalancing')).toBeInTheDocument();
-    expect(screen.getByText('+1 more')).toBeInTheDocument();
+    expect(screen.getByText(/1 more categor/i)).toBeInTheDocument();
   });
 
-  it('exposes an accessible external link to the on-chain identity', () => {
+  it('renders a deterministic identity mark', () => {
+    const { unmount } = render(<AgentCard agent={byId('56:900001')} />);
+    const first = screen.getByRole('img', { name: /Meridian Rebalancer identity mark/i });
+    expect(first).toBeInTheDocument();
+    unmount();
+
+    // Same agent, same mark — marketplace recognition depends on it being stable.
+    render(<AgentCard agent={byId('56:900001')} />);
+    expect(
+      screen.getByRole('img', { name: /Meridian Rebalancer identity mark/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('surfaces declared capabilities on the card', () => {
     render(<AgentCard agent={byId('56:900001')} />);
 
-    const link = screen.getByRole('link', { name: /view agent 900001 on bscscan/i });
-    expect(link).toHaveAttribute('target', '_blank');
-    // noreferrer is required alongside target=_blank to avoid leaking the referrer.
-    expect(link.getAttribute('rel')).toContain('noreferrer');
-    expect(link.getAttribute('href')).toContain('bscscan.com');
+    // The card previews capabilities so a browsing user can judge fit before opening it.
+    expect(screen.getByText('rebalance')).toBeInTheDocument();
   });
 
   it('renders every fixture without throwing', () => {

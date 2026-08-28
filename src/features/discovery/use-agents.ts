@@ -18,6 +18,7 @@ export const agentKeys = {
   detail: (id: string) => ['agents', 'detail', id] as const,
   reputation: (id: string) => ['agents', 'reputation', id] as const,
   categories: () => ['categories'] as const,
+  stats: () => ['stats'] as const,
 };
 
 export function useAgents(params: ListAgentsParams) {
@@ -50,6 +51,15 @@ export function useAgentReputation(id: string) {
     queryFn: ({ signal }) => api.getAgentReputation(id, signal),
     // Shorter than the default: this is the number a user is deciding on.
     staleTime: 15_000,
+  });
+}
+
+/** Marketplace-wide counts. Changes only as ingestion runs, so cached generously. */
+export function useStats() {
+  return useQuery({
+    queryKey: agentKeys.stats(),
+    queryFn: ({ signal }) => api.getStats(signal),
+    staleTime: 60_000,
   });
 }
 

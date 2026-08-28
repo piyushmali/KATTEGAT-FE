@@ -7,12 +7,11 @@ import { ErrorState } from '@/components/ui/states';
 /**
  * Error boundary for every page in the site tree.
  *
- * A route-level boundary rather than a global one: it renders inside the existing
- * layout, so a failed page keeps the header, navigation and wallet state instead
- * of replacing the whole document.
+ * A route-level boundary rather than a global one: a failed page keeps the header,
+ * navigation and wallet state instead of replacing the whole document.
  *
- * The digest is surfaced deliberately — it is the only handle a user has to
- * report a server-side failure whose details are intentionally not sent to them.
+ * The digest is surfaced deliberately — it is the only handle a user has on a
+ * server-side failure whose details are intentionally not sent to them.
  */
 export default function SiteError({
   error,
@@ -27,7 +26,7 @@ export default function SiteError({
   }, [error]);
 
   return (
-    <div className="py-10">
+    <div className="mx-auto max-w-2xl px-4 py-20">
       <ErrorState
         title="This page failed to load"
         detail="An unexpected error stopped this page from rendering. Retrying often clears it."

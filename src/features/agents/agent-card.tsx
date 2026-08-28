@@ -1,142 +1,181 @@
 import Link from 'next/link';
-import { ExternalLink, ShieldCheck, ShieldQuestion } from 'lucide-react';
-import { Badge, type BadgeTone } from '../../components/ui/badge';
-import { agentIdentityUrl, truncateAddress } from '../../lib/web3/chain';
-import type { Agent, AgentCategoryAssignment } from '../../lib/api/contract';
+import { ArrowUpRight, ShieldQuestion, Sparkles } from 'lucide-react';
+import { AgentAvatar } from '../../components/ui/agent-avatar';
+import { Badge } from '../../components/ui/badge';
+import { CATEGORY_LABELS, type Agent, type AgentCategoryAssignment } from '../../lib/api/contract';
+import { truncateAddress } from '../../lib/web3/chain';
 
 /**
  * The marketplace's primary unit of discovery.
  *
- * Answers the question a browsing user is actually asking — "what is this and can
- * I trust it?" — in scanning order: what it does, how it is classified, how much
- * verified feedback exists, and whether its metadata is even complete.
+ * Answers, in scanning order, the questions a browsing user actually has: what is
+ * this, what does it do, is it live, what does it speak, and what evidence exists.
+ * Everything else belongs on the profile.
  *
- * Deliberately shows absence. An agent with no feedback says "No feedback yet"
- * rather than a 0, and an agent whose registration file failed to resolve is
- * labelled as such rather than quietly rendered as an empty card. Overstating
- * confidence is the one failure mode a trust layer cannot afford.
+ * Two honesty rules it enforces:
+ *  - An agent with no feedback reads "No feedback yet", never a 0 score. Absence of
+ *    evidence and a bad score are different claims.
+ *  - An agent whose off-chain metadata failed to resolve is labelled as partial and
+ *    still shown. Its on-chain identity is verified; only the description is missing.
  */
 
-const CATEGORY_LABELS: Record<string, string> = {
-  rebalancing: 'Rebalancing',
-  'grid-trading': 'Grid Trading',
-  'yield-optimization': 'Yield Optimization',
-  'health-factor-monitoring': 'Health Factor',
-  uncategorized: 'Uncategorized',
-};
+/** Traits worth surfacing on a card, in priority order. The rest live on the profile. */
+const TRAIT_PRIORITY: { trait: string; label: string; tone: 'info' | 'amber' | 'neutral' }[] = [
+  { trait: 'tee-attested', label: 'TEE attested', tone: 'info' },
+  { trait: 'x402-paid', label: 'x402', tone: 'amber' },
+  { trait: 'multichain', label: 'Multichain', tone: 'neutral' },
+];
 
-/** Traits that carry a genuine trust signal get colour; the rest stay neutral. */
-const TRAIT_TONES: Record<string, BadgeTone> = {
-  'tee-attested': 'info',
-  'x402-paid': 'accent',
-  multichain: 'neutral',
-  'declared-active': 'positive',
-  'reputation-trust': 'neutral',
-  'crypto-economic-trust': 'neutral',
-};
-
-function formatScore(score: number | null): string | null {
-  if (score === null) return null;
-  return score.toFixed(2);
-}
-
-function primaryCategory(categories: AgentCategoryAssignment[]): AgentCategoryAssignment | null {
+function primaryOf(categories: AgentCategoryAssignment[]): AgentCategoryAssignment | null {
   return categories.find((entry) => entry.isPrimary) ?? categories[0] ?? null;
 }
 
 export function AgentCard({ agent }: { agent: Agent }) {
-  const primary = primaryCategory(agent.categories);
-  const secondary = agent.categories.filter((entry) => !entry.isPrimary);
-  const score = formatScore(agent.reputation?.score ?? null);
+  const primary = primaryOf(agent.categories);
+  const secondaryCount = agent.categories.filter((entry) => !entry.isPrimary).length;
+  const classified = primary !== null && primary.category !== 'uncategorized';
+
+  const score = agent.reputation?.score ?? null;
   const feedbackCount = agent.reputation?.feedbackCount ?? 0;
+  const clientCount = agent.reputation?.clientCount ?? 0;
+
   const metadataMissing = agent.profile.metadataResolvedAt === null;
+  const declaredActive = agent.profile.traitTags.includes('declared-active');
+
+  const traits = TRAIT_PRIORITY.filter((entry) => agent.profile.traitTags.includes(entry.trait));
+  const capabilities = agent.profile.capabilities.slice(0, 3);
+  const extraCapabilities = agent.profile.capabilities.length - capabilities.length;
 
   return (
-    <article className="group relative flex flex-col rounded-card border border-line-subtle bg-surface-raised p-4 transition-colors hover:border-line-strong hover:bg-surface-overlay">
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 text-sm font-semibold text-content-primary">
-          {/* Whole card is the hit area; the link stays the accessible name. */}
-          <Link href={`/agents/${encodeURIComponent(agent.identity.id)}`} className="block truncate">
-            <span className="absolute inset-0" aria-hidden="true" />
-            {agent.profile.name}
-          </Link>
-        </h3>
+    <article className="group relative flex flex-col rounded-panel border border-line bg-surface-raised transition-colors hover:border-line-strong hover:bg-surface-overlay/50">
+      <div className="flex flex-1 flex-col p-4">
+        {/* ------------------------------ identity ----------------------------- */}
+        <div className="flex items-start gap-3">
+          <AgentAvatar agentId={agent.identity.id} name={agent.profile.name} size="md" />
 
-        {primary && primary.category !== 'uncategorized' ? (
-          <Badge tone="accent">{CATEGORY_LABELS[primary.category] ?? primary.category}</Badge>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-[0.8125rem] leading-5 font-semibold text-ink">
+              {/* The whole card is the hit area; the link keeps the accessible name. */}
+              <Link href={`/agents/${encodeURIComponent(agent.identity.id)}`}>
+                <span className="absolute inset-0 rounded-panel" aria-hidden="true" />
+                {agent.profile.name}
+              </Link>
+            </h3>
+            <div className="mt-1 flex items-center gap-1.5">
+              {declaredActive ? (
+                <span className="inline-flex items-center gap-1 text-3xs text-ink-muted">
+                  <span className="size-1 rounded-pill bg-positive" aria-hidden="true" />
+                  Declared active
+                </span>
+              ) : (
+                <span className="text-3xs text-ink-faint">Status not declared</span>
+              )}
+              <span className="text-ink-faint" aria-hidden="true">
+                ·
+              </span>
+              <span className="font-mono text-3xs text-ink-faint">
+                {agent.profile.protocolTag}
+              </span>
+            </div>
+          </div>
+
+          {classified ? (
+            <Badge tone="amber" className="shrink-0">
+              {CATEGORY_LABELS[primary.category]}
+            </Badge>
+          ) : (
+            <Badge
+              tone="outline"
+              className="shrink-0"
+              title="KATTEGAT could not place this agent from its declared capabilities"
+            >
+              Unclassified
+            </Badge>
+          )}
+        </div>
+
+        {/* ----------------------------- description --------------------------- */}
+        <p className="mt-3 line-clamp-2 min-h-8 text-xs leading-4 text-ink-muted">
+          {agent.profile.description ??
+            (metadataMissing
+              ? 'Registration metadata could not be resolved from this agent’s URI.'
+              : 'No description published.')}
+        </p>
+
+        {/* ---------------------------- capabilities --------------------------- */}
+        {capabilities.length > 0 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-1">
+            {capabilities.map((capability) => (
+              <Badge key={capability} tone="neutral" className="max-w-[11rem] truncate">
+                {capability}
+              </Badge>
+            ))}
+            {extraCapabilities > 0 ? (
+              <span className="text-3xs text-ink-faint">+{extraCapabilities}</span>
+            ) : null}
+          </div>
+        ) : metadataMissing ? (
+          <div className="mt-3">
+            <Badge tone="caution">
+              <ShieldQuestion className="size-3" aria-hidden="true" />
+              Metadata unresolved
+            </Badge>
+          </div>
         ) : (
-          <Badge tone="neutral" title="KATTEGAT could not confidently classify this agent">
-            Uncategorized
-          </Badge>
+          <div className="mt-3">
+            <span className="text-3xs text-ink-faint">No capabilities declared</span>
+          </div>
         )}
-      </div>
 
-      <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-xs leading-5 text-content-muted">
-        {agent.profile.description ??
-          (metadataMissing
-            ? 'Registration metadata could not be resolved from this agent’s URI.'
-            : 'No description provided.')}
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <Badge tone="neutral" title="Agent communication protocol">
-          {agent.profile.protocolTag}
-        </Badge>
-        {agent.profile.traitTags.slice(0, 2).map((trait) => (
-          <Badge key={trait} tone={TRAIT_TONES[trait] ?? 'neutral'}>
-            {trait}
-          </Badge>
-        ))}
-        {secondary.length > 0 ? (
-          <Badge
-            tone="neutral"
-            title={secondary
-              .map((entry) => CATEGORY_LABELS[entry.category] ?? entry.category)
-              .join(', ')}
-          >
-            +{secondary.length} more
-          </Badge>
+        {/* --------------------------- trait signals --------------------------- */}
+        {traits.length > 0 || secondaryCount > 0 ? (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1">
+            {traits.map((entry) => (
+              <Badge key={entry.trait} tone={entry.tone}>
+                {entry.label}
+              </Badge>
+            ))}
+            {secondaryCount > 0 ? (
+              <span
+                className="inline-flex items-center gap-1 text-3xs text-ink-faint"
+                title={agent.categories
+                  .filter((entry) => !entry.isPrimary)
+                  .map((entry) => CATEGORY_LABELS[entry.category])
+                  .join(', ')}
+              >
+                <Sparkles className="size-2.5" aria-hidden="true" />
+                {secondaryCount} more {secondaryCount === 1 ? 'category' : 'categories'}
+              </span>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-line-subtle pt-3 text-2xs">
-        <span className="inline-flex items-center gap-1.5 text-content-faint">
-          {metadataMissing ? (
-            <ShieldQuestion className="size-3.5 text-caution" aria-hidden="true" />
+      {/* ------------------------- evidence / footer ------------------------- */}
+      <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2.5">
+        <div className="min-w-0">
+          {score !== null ? (
+            <div className="flex items-baseline gap-1.5">
+              <span className="tabular text-sm font-semibold text-ink">{score.toFixed(2)}</span>
+              <span className="text-3xs text-ink-faint">
+                {feedbackCount} {feedbackCount === 1 ? 'review' : 'reviews'}
+                {clientCount > 0 ? ` · ${String(clientCount)} clients` : ''}
+              </span>
+            </div>
           ) : (
-            <ShieldCheck className="size-3.5 text-content-faint" aria-hidden="true" />
+            // Never "0". Absence of evidence is its own state.
+            <span className="text-2xs text-ink-faint">No feedback yet</span>
           )}
-          <span className="font-mono">{truncateAddress(agent.identity.ownerAddress, 3)}</span>
+          <p className="mt-0.5 truncate font-mono text-3xs text-ink-faint">
+            #{agent.identity.agentId} · {truncateAddress(agent.identity.ownerAddress, 3)}
+          </p>
+        </div>
+
+        <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-ink-muted transition-colors group-hover:text-amber">
+          View
+          <ArrowUpRight className="size-3" aria-hidden="true" />
         </span>
-
-        {score !== null ? (
-          <span className="text-content-secondary">
-            <span className="font-semibold text-content-primary">{score}</span>
-            <span className="text-content-faint">
-              {' '}
-              from {feedbackCount} {feedbackCount === 1 ? 'review' : 'reviews'}
-            </span>
-          </span>
-        ) : (
-          // Absence of feedback is information, not a zero.
-          <span className="text-content-faint">No feedback yet</span>
-        )}
       </div>
-
-      {/* Sits above the card-wide overlay link so it stays independently clickable. */}
-      <a
-        href={agentIdentityUrl(agent.identity.agentId)}
-        target="_blank"
-        rel="noreferrer noopener"
-        onClick={(event) => {
-          event.stopPropagation();
-        }}
-        className="relative z-10 mt-3 inline-flex w-fit items-center gap-1 text-2xs text-content-faint hover:text-accent"
-        aria-label={`View agent ${String(agent.identity.agentId)} on BscScan`}
-      >
-        <ExternalLink className="size-3" aria-hidden="true" />
-        on-chain #{agent.identity.agentId}
-      </a>
     </article>
   );
 }

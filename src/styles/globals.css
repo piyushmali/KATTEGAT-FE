@@ -1,56 +1,60 @@
 @import 'tailwindcss';
 
 /*
- * KATTEGAT design tokens.
+ * KATTEGAT design tokens — the single source of truth.
  *
- * Tailwind v4 keeps the theme in CSS, so this file is the design system's single
- * source of truth — every colour, radius, font and easing used in the product is
- * declared once here and referenced by token name. Nothing in the app hardcodes a
- * hex value.
+ * Tailwind 4 keeps the theme in CSS, so every colour, radius, font and easing in the
+ * product is declared once here. Nothing in the app hardcodes a value.
  *
- * The palette is deliberately restrained: one deep neutral surface ramp, one
- * accent, and semantic colours reserved for state. KATTEGAT presents financial
- * data about autonomous agents that can move real funds, so colour carries
- * meaning (risk, health, confidence) rather than decoration. Gradients and glass
- * effects are absent on purpose.
+ * The visual position: KATTEGAT is infrastructure for deciding whether to trust an
+ * autonomous agent with money. It should read as an instrument panel, not a
+ * marketing site. That means a cold near-black ground, one warm BNB-native accent
+ * used only where it means something, and colour reserved for state.
+ *
+ * Deliberately absent: gradients on surfaces, glow, glass, and any purple/violet.
+ * Those read as "AI product" and undercut the point.
  */
 
 @theme {
-  /* --- Surfaces: a five-step ramp, darkest first ------------------------- */
-  --color-surface-base: oklch(17.5% 0.012 260);
-  --color-surface-raised: oklch(21% 0.014 260);
-  --color-surface-overlay: oklch(25% 0.016 260);
-  --color-surface-inset: oklch(14.5% 0.01 260);
-  --color-surface-hover: oklch(28% 0.018 260);
+  /* --- Ground: cool, near-black, five steps ----------------------------- */
+  --color-void: oklch(12.5% 0.008 265);
+  --color-surface-base: oklch(15% 0.009 265);
+  --color-surface-raised: oklch(18.5% 0.01 265);
+  --color-surface-overlay: oklch(22.5% 0.012 265);
+  --color-surface-inset: oklch(13.5% 0.008 265);
+  --color-surface-hover: oklch(26% 0.014 265);
 
-  /* --- Borders ---------------------------------------------------------- */
-  --color-line-subtle: oklch(28% 0.012 260);
-  --color-line-strong: oklch(38% 0.015 260);
+  /* --- Hairlines. Structure comes from these, not from shadow. ---------- */
+  --color-line: oklch(25% 0.01 265);
+  --color-line-strong: oklch(34% 0.012 265);
+  --color-line-accent: oklch(48% 0.09 85);
 
-  /* --- Text: four levels of emphasis ------------------------------------ */
-  --color-content-primary: oklch(97% 0.004 260);
-  --color-content-secondary: oklch(76% 0.011 260);
-  --color-content-muted: oklch(60% 0.013 260);
-  --color-content-faint: oklch(47% 0.012 260);
+  /* --- Text: four levels ------------------------------------------------ */
+  --color-ink: oklch(97.5% 0.003 265);
+  --color-ink-secondary: oklch(79% 0.008 265);
+  --color-ink-muted: oklch(62% 0.01 265);
+  --color-ink-faint: oklch(48% 0.011 265);
 
   /*
-   * Accent. BNB Chain's brand yellow, pulled toward gold so it stays legible
-   * against the dark surfaces and does not read as a warning colour.
+   * Accent — BNB amber (#F0B90B), tuned in OKLCH for this ground.
+   * Reserved for: primary action, selected state, verified/on-chain markers.
+   * If it appears anywhere else, that is a bug.
    */
-  --color-accent: oklch(80% 0.155 85);
-  --color-accent-strong: oklch(85% 0.165 88);
-  --color-accent-muted: oklch(45% 0.075 85);
-  --color-accent-contrast: oklch(17% 0.02 85);
+  --color-amber: oklch(80.5% 0.155 85.5);
+  --color-amber-bright: oklch(87% 0.16 87);
+  --color-amber-dim: oklch(58% 0.11 85);
+  --color-amber-wash: oklch(30% 0.055 85);
+  --color-amber-ink: oklch(17% 0.03 85);
 
-  /* --- Semantic state. Never used decoratively. ------------------------- */
-  --color-positive: oklch(72% 0.15 155);
-  --color-positive-muted: oklch(35% 0.06 155);
-  --color-caution: oklch(78% 0.14 75);
-  --color-caution-muted: oklch(38% 0.06 75);
-  --color-critical: oklch(65% 0.19 22);
-  --color-critical-muted: oklch(35% 0.09 22);
-  --color-info: oklch(70% 0.12 240);
-  --color-info-muted: oklch(35% 0.06 240);
+  /* --- State. Restrained on purpose; never decorative. ------------------ */
+  --color-positive: oklch(74% 0.13 155);
+  --color-positive-wash: oklch(28% 0.05 155);
+  --color-caution: oklch(80% 0.13 72);
+  --color-caution-wash: oklch(30% 0.05 72);
+  --color-critical: oklch(66% 0.18 22);
+  --color-critical-wash: oklch(29% 0.08 22);
+  --color-info: oklch(72% 0.1 235);
+  --color-info-wash: oklch(28% 0.045 235);
 
   /* --- Type ------------------------------------------------------------- */
   --font-sans:
@@ -59,56 +63,100 @@
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
+  --text-3xs: 0.625rem;
+  --text-3xs--line-height: 0.875rem;
 
-  /* --- Radii ------------------------------------------------------------ */
-  --radius-card: 0.75rem;
+  /* --- Radii: tight. Soft corners read consumer, not instrument. -------- */
+  --radius-sm: 0.375rem;
   --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+  --radius-panel: 0.875rem;
   --radius-pill: 9999px;
 
-  /*
-   * Shadows are low-contrast and used only to separate genuinely floating
-   * layers (dialogs, popovers). Cards are separated by border, not shadow.
-   */
-  --shadow-raised: 0 1px 2px 0 oklch(0% 0 0 / 0.3);
-  --shadow-overlay: 0 12px 32px -8px oklch(0% 0 0 / 0.55);
+  /* --- Elevation: only for genuinely floating layers -------------------- */
+  --shadow-pop: 0 1px 2px 0 oklch(0% 0 0 / 0.4);
+  --shadow-float: 0 16px 40px -12px oklch(0% 0 0 / 0.7);
 
-  /* --- Motion ----------------------------------------------------------- */
+  /* --- Motion: fast and unshowy ----------------------------------------- */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --animate-duration-fast: 120ms;
-  --animate-duration-base: 200ms;
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @layer base {
   * {
-    border-color: var(--color-line-subtle);
+    border-color: var(--color-line);
   }
 
   html {
     color-scheme: dark;
-    /* Anchor links land below the sticky header rather than under it. */
-    scroll-padding-top: 5rem;
+    /* Anchor targets land below the sticky header rather than under it. */
+    scroll-padding-top: 5.5rem;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    background-color: var(--color-surface-base);
-    color: var(--color-content-primary);
+    background-color: var(--color-void);
+    color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* Tightened tracking at body size; the default reads loose on dark ground. */
+    letter-spacing: -0.011em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Numbers in tables and metrics must not jitter as they change. */
+  .tabular,
+  [data-tabular] {
+    font-variant-numeric: tabular-nums;
   }
 
   /*
-   * Visible focus for keyboard users only. `:focus-visible` rather than
-   * `:focus` so a mouse click does not leave a ring behind, and never
-   * `outline: none` without a replacement.
+   * Keyboard-only focus. `:focus-visible` rather than `:focus` so a mouse click
+   * leaves no ring, and `outline: none` never appears without a replacement.
    */
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-amber);
     outline-offset: 2px;
-    border-radius: var(--radius-control);
+    border-radius: var(--radius-sm);
   }
 
-  /* Respect the OS "reduce motion" setting. */
+  ::selection {
+    background: var(--color-amber-wash);
+    color: var(--color-ink);
+  }
+
+  /* Scrollbars, so they belong to the product rather than the OS. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border-radius: var(--radius-pill);
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -121,8 +169,43 @@
   }
 }
 
+@layer components {
+  /*
+   * Hairline grid, used behind the hero and the ecosystem panel.
+   *
+   * A structural texture rather than decoration: it reads as an instrument
+   * backdrop and it is static, so it costs nothing to render.
+   */
+  .grid-field {
+    background-image:
+      linear-gradient(to right, var(--color-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    /* Faded at the edges so the grid never terminates in a hard line. */
+    mask-image: radial-gradient(ellipse 78% 62% at 50% 32%, black 32%, transparent 78%);
+  }
+
+  /* One-pixel top highlight. Suggests a lit surface without a glow. */
+  .lit-edge {
+    position: relative;
+  }
+  .lit-edge::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      oklch(100% 0 0 / 0.09) 22%,
+      oklch(100% 0 0 / 0.09) 78%,
+      transparent
+    );
+    pointer-events: none;
+  }
+}
+
 @layer utilities {
-  /* Visible only to assistive technology. */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -135,18 +218,56 @@
     border-width: 0;
   }
 
-  /* Indeterminate loading sweep for skeletons. */
-  @keyframes kattegat-pulse {
-    0%,
-    100% {
-      opacity: 0.45;
-    }
-    50% {
-      opacity: 0.8;
-    }
+  /* Section eyebrow: small, tracked-out, uppercase. Used for orientation. */
+  .eyebrow {
+    font-size: var(--text-2xs);
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
   }
 
+  @keyframes kg-shimmer {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.75;
+    }
+  }
   .animate-skeleton {
-    animation: kattegat-pulse 1.6s var(--ease-out-quart) infinite;
+    animation: kg-shimmer 1.7s var(--ease-out-quart) infinite;
+  }
+
+  @keyframes kg-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .animate-rise {
+    animation: kg-rise 0.32s var(--ease-out-quart) both;
+  }
+
+  /* Slow breathing dot for "indexing live". Subtle enough to ignore. */
+  @keyframes kg-pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 var(--color-positive-wash);
+    }
+    70% {
+      box-shadow: 0 0 0 5px transparent;
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+  .animate-live {
+    animation: kg-pulse-ring 2.4s ease-out infinite;
   }
 }

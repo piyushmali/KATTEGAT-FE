@@ -509,3 +509,39 @@ export function mockSearch(query: string, page = 1, perPage = 24) {
     },
   };
 }
+
+/**
+ * Stats fixture.
+ *
+ * Derived from the fixture set rather than invented, so the numbers on the landing
+ * page in mock mode are internally consistent with the agents it will show. Feedback
+ * counts are summed from the fixtures, not made up.
+ */
+export function mockStats() {
+  const resolved = MOCK_AGENTS.filter((a) => a.profile.metadata_resolved_at !== null).length;
+  const active = MOCK_AGENTS.filter((a) => a.profile.trait_tags.includes('declared-active')).length;
+  const categories = new Set(
+    MOCK_AGENTS.flatMap((a) =>
+      a.categories.filter((c) => c.is_primary && c.category !== 'uncategorized').map((c) => c.category),
+    ),
+  );
+  const classified = MOCK_AGENTS.filter((a) =>
+    a.categories.some((c) => c.is_primary && c.category !== 'uncategorized'),
+  ).length;
+  const feedback = MOCK_AGENTS.reduce((sum, a) => sum + (a.reputation?.feedback_count ?? 0), 0);
+  const rated = MOCK_AGENTS.filter((a) => (a.reputation?.feedback_count ?? 0) > 0).length;
+
+  return {
+    data: {
+      indexed_agents: MOCK_AGENTS.length,
+      declared_active: active,
+      with_resolved_metadata: resolved,
+      active_categories: categories.size,
+      classified_agents: classified,
+      feedback_records: feedback,
+      rated_agents: rated,
+      owner_count: new Set(MOCK_AGENTS.map((a) => a.identity.owner_address)).size,
+      last_indexed_at: new Date().toISOString(),
+    },
+  };
+}

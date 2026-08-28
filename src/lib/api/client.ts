@@ -3,11 +3,13 @@ import { env } from '../../config/env';
 import { ApiError, apiErrorFromResponse } from './errors';
 import {
   agentDetailResponseSchema,
+  ecosystemStatsResponseSchema,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
   reputationResponseSchema,
   searchResponseSchema,
   type Agent,
+  type EcosystemStats,
   type ListAgentsParams,
   type ListAgentsResponse,
   type ListCategoriesResponse,
@@ -20,6 +22,7 @@ import {
   mockListCategories,
   mockReputation,
   mockSearch,
+  mockStats,
 } from './mock-data';
 
 /**
@@ -173,6 +176,15 @@ export const api = {
       reputationResponseSchema,
       signal,
     );
+    return result.data;
+  },
+
+  /** Marketplace-wide counts for the landing page. Real counts only. */
+  async getStats(signal?: AbortSignal): Promise<EcosystemStats> {
+    if (env.dataSource === 'mock') {
+      return ecosystemStatsResponseSchema.parse(mockStats()).data;
+    }
+    const result = await request('/api/v1/stats', ecosystemStatsResponseSchema, signal);
     return result.data;
   },
 
