@@ -12,6 +12,7 @@ import {
 import { AgentCard } from '../agents/agent-card';
 import { ApiError, describeError } from '../../lib/api/errors';
 import { isMockMode } from '../../config/env';
+import { formatCount } from '../../lib/utils/format';
 import { AgentFilters } from './agent-filters';
 import { useAgents, useCategories } from './use-agents';
 import { useDebouncedValue } from './use-debounced-value';
@@ -195,7 +196,7 @@ export function DiscoveryView() {
                 Previous
               </Button>
               <span className="tabular text-2xs text-ink-muted">
-                Page {meta.page.toLocaleString()} of {meta.totalPages.toLocaleString()}
+                Page {formatCount(meta.page)} of {formatCount(meta.totalPages)}
               </span>
               <Button
                 variant="secondary"

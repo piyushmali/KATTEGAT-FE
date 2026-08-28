@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/badge';
 import { CopyButton } from '../../components/ui/copy-button';
 import { DataRow, Panel, PanelHeader } from '../../components/ui/card';
 import { cn } from '../../lib/utils/cn';
+import { formatCount, formatDate } from '../../lib/utils/format';
 import { agentIdentityUrl, explorerUrl, truncateAddress } from '../../lib/web3/chain';
 import type { Agent } from '../../lib/api/contract';
 
@@ -25,13 +26,7 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
   const [sourceOpen, setSourceOpen] = useState(false);
   const { identity, profile } = agent;
 
-  const registered = identity.registeredAt
-    ? new Date(identity.registeredAt).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : null;
+  const registered = formatDate(identity.registeredAt);
 
   return (
     <Panel>
@@ -85,7 +80,7 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
               {registered}
               {identity.registeredAtBlock ? (
                 <span className="ml-1.5 font-mono text-3xs text-ink-faint">
-                  block {identity.registeredAtBlock.toLocaleString()}
+                  block {formatCount(identity.registeredAtBlock)}
                 </span>
               ) : null}
             </span>

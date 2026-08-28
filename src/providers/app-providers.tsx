@@ -14,7 +14,21 @@ import { QueryProvider } from './query-provider';
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <WagmiProvider config={wagmiConfig}>
+    /*
+     * `reconnectOnMount={false}` on purpose.
+     *
+     * With it enabled, wagmi probes every injected provider for accounts as soon as the
+     * app mounts, and a wallet extension that has no unlocked account can reject that
+     * probe with a bare object rather than an Error. wagmi does not own that promise, so
+     * the rejection escapes as an unhandled rejection — observed in the wild with the
+     * HashPack extension rejecting `{ code: 4001, message: 'wallet must has at least
+     * one account' }`, which surfaces in Next's dev overlay as an unhelpful
+     * "[object Object]".
+     *
+     * Session restoration still happens, but explicitly and with a catch — see
+     * `useSilentReconnect` in components/layout/network-control.tsx.
+     */
+    <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
       <QueryProvider>{children}</QueryProvider>
     </WagmiProvider>
   );

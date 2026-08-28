@@ -1,6 +1,7 @@
 'use client';
 
 import { Skeleton } from '../../components/ui/states';
+import { formatCount } from '../../lib/utils/format';
 import { useStats } from '../discovery/use-agents';
 
 /**
@@ -54,7 +55,7 @@ export function EcosystemStats() {
               <Skeleton className="h-7 w-20" />
             ) : (
               <span className="tabular text-2xl leading-none font-semibold tracking-tight text-ink">
-                {item.value.toLocaleString()}
+                {formatCount(item.value)}
               </span>
             )}
           </dd>
@@ -87,11 +88,11 @@ export function FeedbackCoverage() {
       ) : (
         <>
           <span className="tabular font-medium text-ink">
-            {data.feedbackRecords.toLocaleString()}
+            {formatCount(data.feedbackRecords)}
           </span>{' '}
           feedback records across{' '}
           <span className="tabular font-medium text-ink">
-            {data.ratedAgents.toLocaleString()}
+            {formatCount(data.ratedAgents)}
           </span>{' '}
           rated agents, read from the ERC-8004 reputation registry.
         </>

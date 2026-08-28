@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Check, ChevronDown, ListFilter, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils/cn';
+import { formatCount } from '../../lib/utils/format';
 import type { Category } from '../../lib/api/contract';
 import { LAUNCH_CATEGORIES } from '../../lib/api/contract';
 import {
@@ -165,7 +166,7 @@ export function AgentFilters({
           <span className="text-2xs text-ink-faint" aria-live="polite">
             {totalForQuery === undefined
               ? null
-              : `${totalForQuery.toLocaleString()} ${totalForQuery === 1 ? 'agent' : 'agents'}`}
+              : `${formatCount(totalForQuery)} ${totalForQuery === 1 ? 'agent' : 'agents'}`}
           </span>
           <label className="flex items-center gap-1.5">
             <span className="sr-only">Sort agents by</span>
@@ -299,7 +300,7 @@ function Chip({
       {children}
       {count !== undefined ? (
         <span className={cn('tabular', active ? 'text-amber/70' : 'text-ink-faint')}>
-          {count.toLocaleString()}
+          {formatCount(count)}
         </span>
       ) : null}
     </button>
