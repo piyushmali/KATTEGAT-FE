@@ -6,65 +6,158 @@
  * Tailwind 4 keeps the theme in CSS, so every colour, radius, font and easing in the
  * product is declared once here. Nothing in the app hardcodes a value.
  *
- * The visual position: KATTEGAT is infrastructure for deciding whether to trust an
- * autonomous agent with money. It should read as an instrument panel, not a
- * marketing site. That means a cold near-black ground, one warm BNB-native accent
- * used only where it means something, and colour reserved for state.
+ * ART DIRECTION
  *
- * Deliberately absent: gradients on surfaces, glow, glass, and any purple/violet.
- * Those read as "AI product" and undercut the point.
+ * KATTEGAT is a harbour: a cold northern place where autonomous agents are found,
+ * inspected and sent out. The interface should feel like standing somewhere at dusk —
+ * deep water, weathered stone, fog, and one warm light. Cinematic and architectural,
+ * never a fantasy set.
+ *
+ * Three material families do all the work:
+ *   GROUND   volcanic black through slate, hue 250. Cold, almost blue, very low chroma.
+ *   INK      warm — ivory, parchment, ash. Warm text on cold ground is the whole mood;
+ *            it reads as firelight falling on stone, and it is why this does not look
+ *            like every other dark dashboard.
+ *   METAL    antique gold and bronze. An accent, deliberately desaturated from BNB's
+ *            brand yellow so it reads as aged metal rather than a neon highlight.
+ *
+ * Atmosphere (fjord, mist, ember) is for washes and light only. None of it is ever
+ * text, and none of it is ever a gradient across a surface.
+ *
+ * Deliberately absent: purple/violet, crypto gradients, glass, glow, and neon of any
+ * kind. Those read "AI product" and undercut the point.
+ *
+ * TOKEN NAMES ARE STABLE ON PURPOSE. This overhaul retunes values and adds new
+ * families; it does not rename. That is what lets the art direction land on all three
+ * routes at once instead of leaving half the product on the old palette.
  */
 
 @theme {
-  /* --- Ground: cool, near-black, five steps ----------------------------- */
-  --color-void: oklch(12.5% 0.008 265);
-  --color-surface-base: oklch(15% 0.009 265);
-  --color-surface-raised: oklch(18.5% 0.01 265);
-  --color-surface-overlay: oklch(22.5% 0.012 265);
-  --color-surface-inset: oklch(13.5% 0.008 265);
-  --color-surface-hover: oklch(26% 0.014 265);
+  /*
+   * --- Ground: volcanic black through slate. Cold, hue 250. --------------
+   *
+   * Deeper than a conventional dark theme, because negative space needs somewhere to
+   * fall — but not black. Chroma is held at 0.018 for a reason: pushed any lower the
+   * ground resolves to #020407 and the cold blue undertone disappears entirely, which
+   * is the difference between deep water and a switched-off screen. `void` lands at
+   * #03080e, where the blue is still legible in the channel values.
+   *
+   * Steps are even in OKLCH lightness, so they read as even steps perceptually even
+   * though sRGB compresses them badly at this end.
+   */
+  --color-void: oklch(13% 0.018 250);
+  --color-surface-inset: oklch(14.5% 0.018 250);
+  --color-surface-base: oklch(16% 0.018 250);
+  --color-surface-raised: oklch(18.5% 0.018 250);
+  --color-surface-overlay: oklch(22.5% 0.02 250);
+  --color-surface-hover: oklch(26.5% 0.022 250);
 
-  /* --- Hairlines. Structure comes from these, not from shadow. ---------- */
-  --color-line: oklch(25% 0.01 265);
-  --color-line-strong: oklch(34% 0.012 265);
-  --color-line-accent: oklch(48% 0.09 85);
-
-  /* --- Text: four levels ------------------------------------------------ */
-  --color-ink: oklch(97.5% 0.003 265);
-  --color-ink-secondary: oklch(79% 0.008 265);
-  --color-ink-muted: oklch(62% 0.01 265);
-  --color-ink-faint: oklch(48% 0.011 265);
+  /* --- Hairlines. Architecture comes from these, not from shadow. -------- */
+  --color-line: oklch(26% 0.018 250);
+  --color-line-strong: oklch(35% 0.02 250);
+  --color-line-accent: oklch(46% 0.07 82);
 
   /*
-   * Accent — BNB amber (#F0B90B), tuned in OKLCH for this ground.
-   * Reserved for: primary action, selected state, verified/on-chain markers.
-   * If it appears anywhere else, that is a bug.
+   * --- Ink: warm. Ivory, parchment, ash, weathered stone. ----------------
+   *
+   * Lightness is set from measured contrast, not by eye — see styles/palette.test.ts,
+   * which computes real WCAG ratios from these values and fails the build below AA.
+   *
+   * `ink-faint` is the floor-limited one: it carries the 11px uppercase eyebrows, and
+   * its tightest real pairing is against `surface-raised`. Measured against that
+   * ground, 58% lands at 4.34:1 and misses; 60% reaches 4.71:1. So it sits at 60% and
+   * cannot be darkened for looks. The previous palette allowed roughly 3.4:1 here.
    */
-  --color-amber: oklch(80.5% 0.155 85.5);
-  --color-amber-bright: oklch(87% 0.16 87);
-  --color-amber-dim: oklch(58% 0.11 85);
-  --color-amber-wash: oklch(30% 0.055 85);
-  --color-amber-ink: oklch(17% 0.03 85);
+  --color-ink: oklch(95.5% 0.009 82);
+  --color-ink-secondary: oklch(82% 0.012 78);
+  --color-ink-muted: oklch(70% 0.013 74);
+  --color-ink-faint: oklch(60% 0.014 70);
 
-  /* --- State. Restrained on purpose; never decorative. ------------------ */
-  --color-positive: oklch(74% 0.13 155);
-  --color-positive-wash: oklch(28% 0.05 155);
-  --color-caution: oklch(80% 0.13 72);
-  --color-caution-wash: oklch(30% 0.05 72);
-  --color-critical: oklch(66% 0.18 22);
-  --color-critical-wash: oklch(29% 0.08 22);
-  --color-info: oklch(72% 0.1 235);
-  --color-info-wash: oklch(28% 0.045 235);
+  /*
+   * --- Metal: antique gold. The single warm light in the harbour. --------
+   *
+   * Reserved for: primary action, selected state, verified/on-chain markers.
+   * If it appears anywhere else, that is a bug. Chroma is pulled well back from
+   * BNB's #F0B90B so a page carrying several accents still reads restrained.
+   */
+  --color-amber: oklch(78% 0.115 83);
+  --color-amber-bright: oklch(85% 0.125 85);
+  --color-amber-dim: oklch(56% 0.085 82);
+  --color-amber-wash: oklch(27% 0.045 82);
+  --color-amber-ink: oklch(15% 0.025 82);
+
+  /* Muted bronze: a second, quieter metal for rules and edges. */
+  --color-bronze: oklch(60% 0.07 62);
+  --color-bronze-dim: oklch(38% 0.045 62);
+
+  /*
+   * --- Atmosphere. Washes and light only; never text, never a surface fill.
+   *
+   * `fjord` is deep water, `mist` is the cold silver of fog catching light, `ember`
+   * is distant firelight. They exist so depth can be built from air rather than
+   * from another bordered box.
+   */
+  --color-fjord: oklch(40% 0.075 245);
+  --color-fjord-deep: oklch(22% 0.05 248);
+  --color-mist: oklch(64% 0.04 238);
+  --color-ember: oklch(66% 0.115 45);
+
+  /* --- State. Restrained on purpose; never decorative. ------------------- */
+  --color-positive: oklch(74% 0.125 155);
+  --color-positive-wash: oklch(26% 0.05 155);
+  --color-caution: oklch(80% 0.12 72);
+  --color-caution-wash: oklch(28% 0.05 72);
+  --color-critical: oklch(67% 0.17 22);
+  --color-critical-wash: oklch(27% 0.075 22);
+  --color-info: oklch(72% 0.09 235);
+  --color-info-wash: oklch(26% 0.045 235);
 
   /* --- Type ------------------------------------------------------------- */
+  /*
+   * Two voices, held far apart on purpose. The serif is for monumental statements
+   * and nothing else; the sans carries every piece of working interface. Contrast
+   * between them is what makes the product read editorial instead of SaaS.
+   */
+  --font-display:
+    var(--font-instrument-serif), 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia,
+    'Times New Roman', serif;
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --text-2xs: 0.6875rem;
-  --text-2xs--line-height: 1rem;
   --text-3xs: 0.625rem;
   --text-3xs--line-height: 0.875rem;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /*
+   * Display scale. Fluid, so a headline occupies a comparable share of the viewport
+   * on a laptop and on a phone rather than collapsing to a heading. `clamp` also
+   * means no breakpoint jumps mid-composition.
+   *
+   * Tracking tightens as size grows, which is how high-contrast serifs are meant to
+   * be set; leading drops below 1 because these are one to three lines, not prose.
+   */
+  --text-display-sm: clamp(1.75rem, 3.2vw, 2.5rem);
+  --text-display-sm--line-height: 1.08;
+  --text-display-sm--letter-spacing: -0.018em;
+
+  --text-display-md: clamp(2.25rem, 5vw, 3.75rem);
+  --text-display-md--line-height: 1.02;
+  --text-display-md--letter-spacing: -0.022em;
+
+  --text-display-lg: clamp(2.75rem, 7.5vw, 6rem);
+  --text-display-lg--line-height: 0.96;
+  --text-display-lg--letter-spacing: -0.026em;
+
+  --text-display-xl: clamp(3.25rem, 10.5vw, 8.5rem);
+  --text-display-xl--line-height: 0.92;
+  --text-display-xl--letter-spacing: -0.032em;
+
+  /* --- Measure ---------------------------------------------------------- */
+  /* Named so the shell width stops being an arbitrary value repeated in six files. */
+  --container-shell: 85rem;
+  --container-reading: 44rem;
 
   /* --- Radii: tight. Soft corners read consumer, not instrument. -------- */
   --radius-sm: 0.375rem;
@@ -76,10 +169,20 @@
   /* --- Elevation: only for genuinely floating layers -------------------- */
   --shadow-pop: 0 1px 2px 0 oklch(0% 0 0 / 0.4);
   --shadow-float: 0 16px 40px -12px oklch(0% 0 0 / 0.7);
+  /* Long, soft, and very dark — a cast shadow in a cold room, not a card lift. */
+  --shadow-cast: 0 32px 80px -24px oklch(0% 0 0 / 0.85);
 
-  /* --- Motion: fast and unshowy ----------------------------------------- */
+  /*
+   * --- Motion ------------------------------------------------------------
+   *
+   * Interface feedback stays fast; anything cinematic settles slowly. `fjord` is a
+   * deep expo-out — quick to leave, long to arrive, the way a ship loses way coming
+   * into a harbour. `tide` is symmetric, for things that move both directions.
+   */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-fjord: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-tide: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 @layer base {
@@ -105,6 +208,10 @@
     letter-spacing: -0.011em;
   }
 
+  /*
+   * Interface headings only. Display type opts in through the `.display` class or a
+   * `font-display` utility, so a serif never leaks into a panel header by accident.
+   */
   h1,
   h2,
   h3,
@@ -157,6 +264,11 @@
     background-clip: content-box;
   }
 
+  /*
+   * One switch disables every animation in the product, including the scroll reveals.
+   * `Reveal` also checks this in JS so it can skip its observer entirely rather than
+   * relying on a 0.01ms transition.
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -166,23 +278,122 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+
+    /*
+     * Scroll reveals are neutralised outright, not merely sped up. Zeroing the
+     * duration would still leave the element hidden until its observer fires, so
+     * anyone who asked for no motion would get a blank page that fills in as they
+     * scroll. This makes the hidden state unreachable for them.
+     */
+    [data-reveal] {
+      opacity: 1 !important;
+      transform: none !important;
+    }
   }
 }
 
 @layer components {
+  /* ------------------------------------------------------------------ */
+  /* Display type                                                        */
+  /* ------------------------------------------------------------------ */
+
   /*
-   * Hairline grid, used behind the hero and the ecosystem panel.
+   * Monumental voice. The serif is high-contrast, so it needs optical sizing help
+   * that a variable font would give for free and this one does not: tracking is
+   * already handled per step in the type scale, and `text-wrap: balance` keeps a
+   * three-word headline from dropping one word onto its own line.
+   */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-wrap: balance;
+    /* A high-contrast serif on a dark ground thickens visually; this counters it. */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Editorial emphasis inside a headline. Instrument Serif's italic is a true cut. */
+  .display em,
+  .display .em {
+    font-style: italic;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Material                                                            */
+  /* ------------------------------------------------------------------ */
+
+  /*
+   * Film grain over the whole document.
    *
-   * A structural texture rather than decoration: it reads as an instrument
-   * backdrop and it is static, so it costs nothing to render.
+   * A single static SVG turbulence tile, composited once and never repainted, which
+   * is why this costs effectively nothing next to an animated canvas. It is what
+   * stops large flat areas of near-black from banding on cheap panels, and it gives
+   * every surface a faint physical tooth.
+   *
+   * Sits above content but below nothing interactive — `pointer-events: none` and no
+   * effect on focus rings, which draw over it.
+   */
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.032;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /*
+   * Hairline survey grid. Reads as harbour architecture — a plan drawing under the
+   * composition rather than decoration. Static, so it costs one paint.
    */
   .grid-field {
     background-image:
       linear-gradient(to right, var(--color-line) 1px, transparent 1px),
       linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
-    background-size: 56px 56px;
+    background-size: 64px 64px;
     /* Faded at the edges so the grid never terminates in a hard line. */
-    mask-image: radial-gradient(ellipse 78% 62% at 50% 32%, black 32%, transparent 78%);
+    mask-image: radial-gradient(ellipse 76% 60% at 50% 30%, black 26%, transparent 76%);
+  }
+
+  /*
+   * Fog bank. Two offset, very low-chroma radial washes that suggest depth and a
+   * light source without becoming a gradient background. Layered under content.
+   */
+  .fog {
+    background-image:
+      radial-gradient(
+        ellipse 62% 48% at 18% 8%,
+        color-mix(in oklab, var(--color-fjord) 22%, transparent),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 54% 44% at 88% 24%,
+        color-mix(in oklab, var(--color-mist) 11%, transparent),
+        transparent 68%
+      );
+  }
+
+  /*
+   * Waterline. A single luminous horizontal seam — the far edge of the fjord where
+   * light collects. One element, one gradient; it does the work an image would.
+   */
+  .horizon {
+    position: relative;
+  }
+  .horizon::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--color-mist) 34%, transparent) 28%,
+      color-mix(in oklab, var(--color-amber) 26%, transparent) 50%,
+      color-mix(in oklab, var(--color-mist) 34%, transparent) 72%,
+      transparent
+    );
+    pointer-events: none;
   }
 
   /* One-pixel top highlight. Suggests a lit surface without a glow. */
@@ -255,6 +466,27 @@
     animation: kg-rise 0.32s var(--ease-out-quart) both;
   }
 
+  /*
+   * Fog drift. Very slow, and deliberately returns to its starting offset: the
+   * reduced-motion rule collapses animations to one instant frame, so a keyframe that
+   * ended somewhere else would snap the fog bank sideways instead of leaving it put.
+   *
+   * Transform only, so it composites and never triggers layout.
+   */
+  @keyframes kg-drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(3.5%, -1.5%, 0);
+    }
+  }
+  .animate-drift {
+    animation: kg-drift 64s var(--ease-tide) infinite;
+    will-change: transform;
+  }
+
   /* Slow breathing dot for "indexing live". Subtle enough to ignore. */
   @keyframes kg-pulse-ring {
     0% {
@@ -269,5 +501,27 @@
   }
   .animate-live {
     animation: kg-pulse-ring 2.4s ease-out infinite;
+  }
+
+  /*
+   * Scroll reveal, driven by the `Reveal` component.
+   *
+   * Only opacity and transform are animated — both compositor properties, so a long
+   * 900ms settle stays on the GPU and cannot cause layout. The initial state lives
+   * on `[data-reveal='hidden']` rather than in the base class, so content is visible
+   * by default and stays visible if JS never runs.
+   */
+  [data-reveal] {
+    transition:
+      opacity 900ms var(--ease-fjord),
+      transform 900ms var(--ease-fjord);
+  }
+  [data-reveal='hidden'] {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  [data-reveal='shown'] {
+    opacity: 1;
+    transform: none;
   }
 }

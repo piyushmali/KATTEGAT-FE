@@ -67,6 +67,41 @@ export function EcosystemStats() {
 }
 
 /**
+ * The same counts, compressed to one line for the base of the hero.
+ *
+ * The hero is now mostly negative space, which is the point — but a landing page whose
+ * first viewport contains no evidence is exactly the "trust us" gesture this product
+ * exists to refuse. Three real counts on a hairline keep the fold honest without
+ * competing with the headline.
+ *
+ * Reuses `useStats`, so this costs no additional request: TanStack Query serves both
+ * this and the full grid below from one cache entry.
+ */
+export function HeroIndexStrip() {
+  const { data, isError } = useStats();
+
+  // Never a blocker on the fold: no counts simply means no strip.
+  if (isError || !data) return null;
+
+  const items = [
+    { label: 'agents indexed', value: data.indexedAgents },
+    { label: 'classified', value: data.classifiedAgents },
+    { label: 'distinct owners', value: data.ownerCount },
+  ];
+
+  return (
+    <dl className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-baseline gap-2">
+          <dd className="tabular text-base font-medium text-ink">{formatCount(item.value)}</dd>
+          <dt className="text-2xs tracking-wide text-ink-faint">{item.label}</dt>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/**
  * Feedback coverage, stated honestly.
  *
  * At the time of writing no agent in the index has on-chain feedback, and that is a

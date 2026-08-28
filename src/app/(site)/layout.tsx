@@ -13,6 +13,17 @@ import { AppProviders } from '@/providers/app-providers';
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <AppProviders>
+      {/*
+       * Scroll reveals are hidden until their observer fires, so without JS they would
+       * never appear. This is the no-JS escape hatch — the page renders fully, just
+       * without the entrance. `prefers-reduced-motion` has its own override in
+       * globals.css, and `Reveal` itself shows immediately where IntersectionObserver
+       * is unavailable.
+       */}
+      <noscript>
+        <style>{`[data-reveal]{opacity:1 !important;transform:none !important}`}</style>
+      </noscript>
+
       <div className="flex min-h-dvh flex-col">
         {/* First focusable element, ahead of the nav and wallet control. */}
         <a
