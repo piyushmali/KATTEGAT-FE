@@ -2,9 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Connector } from 'wagmi';
-import { useAccount, useConnect, useDisconnect, useReconnect, useSwitchChain } from 'wagmi';
+import {
+  useAccount,
+  useConfig,
+  useConnect,
+  useConnectors,
+  useDisconnect,
+  useReconnect,
+  useSwitchChain,
+} from 'wagmi';
 import { AlertTriangle, LogOut, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
+import { cn } from '../../lib/utils/cn';
 import { EXPECTED_CHAIN, EXPECTED_CHAIN_ID, truncateAddress } from '../../lib/web3/chain';
 
 /**
@@ -19,42 +28,72 @@ import { EXPECTED_CHAIN, EXPECTED_CHAIN_ID, truncateAddress } from '../../lib/we
  * anything; scoped authority is a separate, explicit step in the hire flow.
  */
 /**
- * Restores a previous wallet session once, with the failure handled.
+ * Restores the wallet the user last chose — and only that one.
  *
- * This is what `reconnectOnMount` would have done, except the rejection is caught.
- * A wallet extension with no unlocked account rejects the account probe — sometimes
- * with a plain object rather than an Error — and letting that escape produces an
- * unhandled rejection that Next's dev overlay reports as "[object Object]".
+ * Calling `reconnect()` with no argument looks like "restore my session" but is not
+ * what it does: it walks *every* connector and connects to the first that reports an
+ * authorized account. `recentConnectorId` only influences the order. So on a machine
+ * with several wallets, whichever one happens to be unlocked gets silently attached,
+ * regardless of what the user picked last time. That is how a Phantom session kept
+ * reappearing on a BNB marketplace and then reported "wrong network" — Phantom's EVM
+ * provider answers on Ethereum mainnet.
  *
- * A failed reconnect is not an error worth showing anyone: it just means there is no
- * session to restore, which is the normal first-visit state. So it is swallowed
- * deliberately rather than surfaced.
+ * Passing an explicit connector list stops the walk. If the remembered wallet is gone
+ * or was explicitly disconnected, nothing is restored and the user is simply offered
+ * the picker, which is the honest outcome.
+ *
+ * An explicit disconnect stays sticky without extra bookkeeping: wagmi's injected
+ * connector defaults to `shimDisconnect`, so `isAuthorized()` stays false for a wallet
+ * the user disconnected even though the extension itself is still unlocked.
+ *
+ * The failure path is swallowed on purpose. Having no session to restore is the normal
+ * first-visit state, not an error — and a wallet with no unlocked account rejects the
+ * account probe with a bare object rather than an Error, which Next's dev overlay would
+ * otherwise surface as an unhelpful "[object Object]".
  */
 function useSilentReconnect() {
+  const config = useConfig();
+  const connectors = useConnectors();
   const { reconnect } = useReconnect();
   const attempted = useRef(false);
 
   useEffect(() => {
-    // Guarded so React's development double-invoke does not probe wallets twice.
-    if (attempted.current) return;
+    /*
+     * EIP-6963 wallets announce themselves after mount, so an empty list means
+     * discovery has not finished rather than "no wallets". Leaving the guard unset
+     * lets this run again once they arrive.
+     */
+    if (attempted.current || connectors.length === 0) return;
     attempted.current = true;
 
-    try {
-      reconnect(undefined, {
-        onError: () => {
-          // No session to restore, or the wallet declined. Both are unremarkable.
+    void (async () => {
+      let rememberedId: string | null | undefined;
+      try {
+        rememberedId = await config.storage?.getItem('recentConnectorId');
+      } catch {
+        return;
+      }
+      if (!rememberedId) return;
+
+      const remembered = connectors.find((connector) => connector.id === rememberedId);
+      if (!remembered) return;
+
+      reconnect(
+        { connectors: [remembered] },
+        {
+          onError: () => {
+            // Wallet locked, account revoked, or user declined. All unremarkable.
+          },
         },
-      });
-    } catch {
-      // Some injected providers throw synchronously rather than rejecting.
-    }
-  }, [reconnect]);
+      );
+    })();
+  }, [config, connectors, reconnect]);
 }
 
 export function NetworkControl() {
   useSilentReconnect();
 
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected, chainId, connector } = useAccount();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
 
@@ -77,37 +116,56 @@ export function NetworkControl() {
         </span>
       </div>
 
-      {wrongNetwork ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={isSwitching}
-          className="text-caution ring-caution/40"
-          onClick={() => {
-            // Declining the network switch is a normal user choice, not an error.
-            switchChain({ chainId: EXPECTED_CHAIN_ID }, { onError: () => undefined });
-          }}
-        >
-          <AlertTriangle className="size-3.5" aria-hidden="true" />
-          {isSwitching ? 'Switching…' : 'Switch to BNB'}
-        </Button>
-      ) : isConnected ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            disconnect();
-          }}
-          title={address}
-          aria-label={`Disconnect wallet ${address ?? ''}`}
-          className="group"
-        >
-          <span className="font-mono">{address ? truncateAddress(address, 4) : 'Connected'}</span>
-          <LogOut
-            className="size-3 text-ink-faint transition-colors group-hover:text-ink-secondary"
-            aria-hidden="true"
-          />
-        </Button>
+      {isConnected ? (
+        <>
+          {wrongNetwork ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={isSwitching}
+              className="text-caution ring-caution/40"
+              onClick={() => {
+                // Declining the network switch is a normal user choice, not an error.
+                switchChain({ chainId: EXPECTED_CHAIN_ID }, { onError: () => undefined });
+              }}
+            >
+              <AlertTriangle className="size-3.5" aria-hidden="true" />
+              {isSwitching ? 'Switching…' : 'Switch to BNB'}
+            </Button>
+          ) : null}
+
+          {/*
+           * Rendered whenever a wallet is attached, including on the wrong network.
+           * Previously the wrong-network branch replaced this button, which left the
+           * only escape route behind the very switch that was failing — a wallet that
+           * cannot add BNB Smart Chain, or a wallet the user never meant to connect,
+           * had no way out. Disconnecting is how you get back to the picker.
+           */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              disconnect();
+            }}
+            title={
+              connector ? `${connector.name} · ${address ?? ''} — click to disconnect` : address
+            }
+            aria-label={`Disconnect ${connector?.name ?? 'wallet'} ${address ?? ''}`}
+            className="group"
+          >
+            {/*
+             * The wallet's own icon. Worth the space: the entire wrong-wallet problem
+             * was invisible because the header showed an address without saying which
+             * extension produced it.
+             */}
+            {connector ? <WalletIcon connector={connector} size="sm" /> : null}
+            <span className="font-mono">{address ? truncateAddress(address, 4) : 'Connected'}</span>
+            <LogOut
+              className="size-3 text-ink-faint transition-colors group-hover:text-ink-secondary"
+              aria-hidden="true"
+            />
+          </Button>
+        </>
       ) : (
         <ConnectWallet />
       )}
@@ -227,12 +285,17 @@ function ConnectWallet() {
  * for `next/image` to optimise and a plain `img` is the honest element. Falls back to a
  * monogram when a wallet announces no icon.
  */
-function WalletIcon({ connector }: { connector: Connector }) {
+function WalletIcon({ connector, size = 'md' }: { connector: Connector; size?: 'sm' | 'md' }) {
+  const box = cn('shrink-0 rounded-sm', size === 'sm' ? 'size-3.5' : 'size-5');
+
   if (!connector.icon) {
     return (
       <span
         aria-hidden="true"
-        className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-surface-inset text-3xs font-semibold text-ink-muted"
+        className={cn(
+          box,
+          'flex items-center justify-center bg-surface-inset text-3xs font-semibold text-ink-muted',
+        )}
       >
         {connector.name.slice(0, 1).toUpperCase()}
       </span>
@@ -241,6 +304,6 @@ function WalletIcon({ connector }: { connector: Connector }) {
 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- extension-supplied data URI; nothing to optimise.
-    <img src={connector.icon} alt="" aria-hidden="true" className="size-5 shrink-0 rounded-sm" />
+    <img src={connector.icon} alt="" aria-hidden="true" className={box} />
   );
 }
