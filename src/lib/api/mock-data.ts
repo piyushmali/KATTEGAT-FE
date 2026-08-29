@@ -33,6 +33,7 @@ type WireAgent = {
     capabilities: string[];
     protocol_tag: string;
     trait_tags: string[];
+    image_url: string | null;
     metadata_resolved_at: string | null;
   };
   categories: {
@@ -77,6 +78,7 @@ const MOCK_AGENTS: WireAgent[] = [
       capabilities: ['rebalance', 'allocation', 'portfolio'],
       protocol_tag: 'a2a',
       trait_tags: ['declared-active', 'reputation-trust'],
+      image_url: 'https://www.iconaves.com/logo/pro.ave.ai.png',
       metadata_resolved_at: '2026-06-01T09:20:00.000Z',
     },
     categories: [
@@ -117,6 +119,7 @@ const MOCK_AGENTS: WireAgent[] = [
       capabilities: ['grid-trading', 'market-making'],
       protocol_tag: 'mcp',
       trait_tags: ['x402-paid', 'declared-active'],
+      image_url: 'https://evoevo.ai/images/agent-mcp.webp',
       metadata_resolved_at: '2026-06-04T14:06:00.000Z',
     },
     categories: [
@@ -156,6 +159,7 @@ const MOCK_AGENTS: WireAgent[] = [
       capabilities: ['yield', 'autocompound', 'vault'],
       protocol_tag: 'a2a',
       trait_tags: ['multichain', 'declared-active'],
+      image_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=kelp',
       metadata_resolved_at: '2026-06-11T08:49:00.000Z',
     },
     categories: [
@@ -196,6 +200,7 @@ const MOCK_AGENTS: WireAgent[] = [
       capabilities: ['health-factor', 'liquidation-protection', 'collateral'],
       protocol_tag: 'a2a',
       trait_tags: ['tee-attested', 'declared-active', 'reputation-trust'],
+      image_url: 'https://r2-image-worker.pieverse-img.workers.dev/sentinel.png',
       metadata_resolved_at: '2026-07-02T19:35:00.000Z',
     },
     categories: [
@@ -235,6 +240,7 @@ const MOCK_AGENTS: WireAgent[] = [
       capabilities: ['rebalance', 'yield', 'vault'],
       protocol_tag: 'mcp',
       trait_tags: ['x402-paid', 'multichain', 'declared-active'],
+      image_url: 'https://rs.debot.ai/agent/grid.png',
       metadata_resolved_at: '2026-07-19T11:14:00.000Z',
     },
     // Genuinely spans two categories — exercises secondary-category rendering.
@@ -283,6 +289,7 @@ const MOCK_AGENTS: WireAgent[] = [
       capabilities: [],
       protocol_tag: 'unconfigured',
       trait_tags: [],
+      image_url: null,
       metadata_resolved_at: null,
     },
     categories: [

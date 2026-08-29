@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { AgentAvatar } from '../../components/ui/agent-avatar';
+import { AgentImage } from '../../components/ui/agent-image';
 import { Skeleton } from '../../components/ui/states';
 import { CATEGORY_LABELS } from '../../lib/api/contract';
 import { useAgents } from '../discovery/use-agents';
@@ -79,9 +79,10 @@ export function AgentPreview() {
                     href={`/agents/${encodeURIComponent(agent.identity.id)}`}
                     className="group flex items-center gap-3.5 px-5 py-4 transition-colors duration-300 hover:bg-surface-overlay/50"
                   >
-                    <AgentAvatar
+                    <AgentImage
                       agentId={agent.identity.id}
                       name={agent.profile.name}
+                      imageUrl={agent.profile.imageUrl}
                       size="sm"
                     />
                     <div className="min-w-0 flex-1">

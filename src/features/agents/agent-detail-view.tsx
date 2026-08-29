@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Layers } from 'lucide-react';
-import { AgentAvatar } from '../../components/ui/agent-avatar';
+import { AgentImage } from '../../components/ui/agent-image';
 import { Badge, StatusDot } from '../../components/ui/badge';
 import { Panel, PanelHeader } from '../../components/ui/card';
 import { AgentProfileSkeleton, ErrorState } from '../../components/ui/states';
@@ -106,9 +106,10 @@ export function AgentDetailView({ id }: { id: string }) {
           </Link>
 
           <div className="mt-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-7">
-            <AgentAvatar
+            <AgentImage
               agentId={agent.identity.id}
               name={agent.profile.name}
+              imageUrl={agent.profile.imageUrl}
               size="xl"
               className="shadow-cast"
             />
