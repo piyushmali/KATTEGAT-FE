@@ -37,6 +37,7 @@ describe('agent contract', () => {
         capabilities: ['rebalance'],
         protocol_tag: 'a2a',
         trait_tags: ['x402-paid'],
+        image_url: 'https://www.iconaves.com/logo/test.png',
         metadata_resolved_at: null,
       },
       categories: [

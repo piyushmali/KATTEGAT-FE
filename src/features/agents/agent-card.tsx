@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowUpRight, ShieldQuestion } from 'lucide-react';
-import { AgentAvatar } from '../../components/ui/agent-avatar';
+import { AgentImage } from '../../components/ui/agent-image';
 import { Badge, StatusDot } from '../../components/ui/badge';
 import { CATEGORY_LABELS, type Agent, type AgentCategoryAssignment } from '../../lib/api/contract';
 import { formatScore } from '../../lib/utils/format';
@@ -84,7 +84,16 @@ export function AgentCard({ agent }: { agent: Agent }) {
       <div className="flex flex-1 flex-col p-5">
         {/* ------------------------------ identity ----------------------------- */}
         <div className="flex items-start justify-between gap-3">
-          <AgentAvatar agentId={agent.identity.id} name={agent.profile.name} size="md" />
+          {/*
+           * The agent's own artwork where it published one, its generated mark otherwise.
+           * Both render at identical size so the grid keeps its rhythm either way.
+           */}
+          <AgentImage
+            agentId={agent.identity.id}
+            name={agent.profile.name}
+            imageUrl={agent.profile.imageUrl}
+            size="md"
+          />
 
           {/* Category as an eyebrow, not a chip: it is orientation, not a signal. */}
           {classified ? (

@@ -104,6 +104,14 @@ export const agentProfileSchema = z
     capabilities: z.array(z.string()),
     protocol_tag: z.string(),
     trait_tags: z.array(z.string()),
+    /**
+     * The agent's own artwork from its registration file, or null.
+     *
+     * The backend guarantees an absolute `https:` URL or null — the value originates on
+     * chain, so it is validated there rather than trusted here. Still needs a fallback in
+     * the UI: the host is a third party and may be unreachable.
+     */
+    image_url: z.string().nullable(),
     metadata_resolved_at: z.string().nullable(),
   })
   .transform((raw) => ({
@@ -112,6 +120,7 @@ export const agentProfileSchema = z
     capabilities: raw.capabilities,
     protocolTag: raw.protocol_tag,
     traitTags: raw.trait_tags,
+    imageUrl: raw.image_url,
     /** Null means the off-chain registration file never resolved. */
     metadataResolvedAt: raw.metadata_resolved_at,
   }));

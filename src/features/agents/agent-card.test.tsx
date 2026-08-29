@@ -83,17 +83,34 @@ describe('AgentCard', () => {
     expect(screen.getByText(/1 more categor/i)).toBeInTheDocument();
   });
 
-  it('renders a deterministic identity mark', () => {
-    const { unmount } = render(<AgentCard agent={byId('56:900001')} />);
-    const first = screen.getByRole('img', { name: /Meridian Rebalancer identity mark/i });
-    expect(first).toBeInTheDocument();
+  it("shows the agent's own artwork when it published one", () => {
+    /*
+     * 95.5% of agents with resolved metadata publish an `image` in their registration
+     * file, so real artwork is the common case and the generated mark is the fallback.
+     */
+    render(<AgentCard agent={byId('56:900001')} />);
+
+    const artwork = screen.getByRole('img', { name: /Meridian Rebalancer artwork/i });
+    expect(artwork).toHaveAttribute('src', 'https://www.iconaves.com/logo/pro.ave.ai.png');
+    // Browsing must not tell a third-party host which agent is being viewed.
+    expect(artwork).toHaveAttribute('referrerPolicy', 'no-referrer');
+    expect(artwork).toHaveAttribute('loading', 'lazy');
+  });
+
+  it('falls back to a deterministic identity mark when there is no artwork', () => {
+    // 56:900006 publishes no image, which is the 4.5% case.
+    const agent = byId('56:900006');
+    const markName = new RegExp(`${agent.profile.name} identity mark`, 'i');
+
+    const { unmount } = render(<AgentCard agent={agent} />);
+    const first = screen.getByRole('img', { name: markName });
+    const firstHtml = first.innerHTML;
     unmount();
 
-    // Same agent, same mark — marketplace recognition depends on it being stable.
-    render(<AgentCard agent={byId('56:900001')} />);
-    expect(
-      screen.getByRole('img', { name: /Meridian Rebalancer identity mark/i }),
-    ).toBeInTheDocument();
+    // Same agent, same mark — marketplace recognition depends on it being stable, and
+    // that is the whole reason the mark is derived from the id rather than random.
+    render(<AgentCard agent={agent} />);
+    expect(screen.getByRole('img', { name: markName }).innerHTML).toBe(firstHtml);
   });
 
   it('surfaces declared capabilities on the card', () => {
