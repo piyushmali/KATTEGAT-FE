@@ -46,9 +46,15 @@ export function AgentAvatar({
   const seed = hash(agentId);
   const { box, grid } = SIZES[size];
 
-  // Two hues from the same seed, kept inside a warm→steel band (35°–265°).
-  const hueA = 35 + (seed % 40);
-  const hueB = 200 + ((seed >> 8) % 65);
+  /*
+   * Two hues from the same seed, each confined to one of the palette's own families:
+   * `hueA` is struck metal (bronze through gold, 55°–95°) and `hueB` is deep water
+   * (225°–262°). Constraining them this tightly is what lets a grid of twenty-four
+   * marks read as one collection of artefacts rather than as confetti — the variation
+   * a viewer notices is the pattern, not the colour.
+   */
+  const hueA = 55 + (seed % 40);
+  const hueB = 225 + ((seed >> 8) % 37);
 
   const half = Math.ceil(grid / 2);
   const cells: boolean[] = [];
@@ -75,10 +81,11 @@ export function AgentAvatar({
       role="img"
       aria-label={name ? `${name} identity mark` : 'Agent identity mark'}
     >
+      {/* The plate: cold water lit from the top-left, so the mark sits on a material. */}
       <div
         className="absolute inset-0"
         style={{
-          background: `linear-gradient(135deg, oklch(26% 0.05 ${String(hueA)}), oklch(19% 0.03 ${String(hueB)}))`,
+          background: `linear-gradient(142deg, oklch(24% 0.045 ${String(hueA)}) 0%, oklch(17% 0.03 ${String(hueB)}) 62%, oklch(13% 0.022 ${String(hueB)}) 100%)`,
         }}
         aria-hidden="true"
       />
@@ -92,13 +99,31 @@ export function AgentAvatar({
             key={index}
             className="rounded-[1px]"
             style={{
+              /*
+               * Chroma is held at 0.095 — well under the accent's own 0.115 — because
+               * the mark is identity, not a signal. It has to be recognisable at a
+               * glance without competing with the one amber action on the screen.
+               */
               background: filled
-                ? `oklch(78% 0.13 ${String(hueA)} / ${index % 3 === 0 ? '0.95' : '0.7'})`
+                ? `oklch(74% 0.095 ${String(hueA)} / ${index % 3 === 0 ? '0.92' : '0.62'})`
                 : 'transparent',
             }}
           />
         ))}
       </div>
+
+      {/*
+       * Struck edge. A one-pixel inset highlight along the top and a darker seam below
+       * it, which is what reads as stamped rather than printed — the same trick the
+       * panels use, at a sixteenth of the scale.
+       */}
+      <div
+        className="absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-ink/8"
+        style={{
+          boxShadow: 'inset 0 1px 0 0 oklch(100% 0 0 / 0.07), inset 0 -1px 2px 0 oklch(0% 0 0 / 0.4)',
+        }}
+        aria-hidden="true"
+      />
     </div>
   );
 }

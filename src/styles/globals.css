@@ -450,6 +450,12 @@
   }
   .animate-skeleton {
     animation: kg-shimmer 1.7s var(--ease-out-quart) infinite;
+    /*
+     * Set by a skeleton's container to stagger a grid, so it resolves as a wave rather
+     * than pulsing in unison. Read from an inherited custom property because
+     * `animation-delay` is not itself inherited.
+     */
+    animation-delay: var(--skeleton-delay, 0ms);
   }
 
   @keyframes kg-rise {

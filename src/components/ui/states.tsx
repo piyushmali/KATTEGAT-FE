@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { AlertTriangle, Loader2, RotateCw, SearchX, ServerCrash } from 'lucide-react';
 import { cn } from '../../lib/utils/cn';
 import { Button } from './button';
@@ -23,29 +23,46 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
-/** Matches AgentCard's footprint exactly, to avoid layout shift on load. */
-export function AgentCardSkeleton() {
+/**
+ * Matches AgentCard's footprint, to avoid layout shift on load.
+ *
+ * This has to be kept in step with the card by hand, and the pairing is deliberate:
+ * every measurement here mirrors a real one — `p-5`, the `size-10` mark, the serif name
+ * block, the two clamped description lines, and the `py-3` evidence footer behind its
+ * hairline. When the card's padding or footer changes, this changes with it, otherwise
+ * the grid visibly jumps as data lands.
+ */
+export function AgentCardSkeleton({ delay = 0 }: { delay?: number }) {
   return (
-    <div className="rounded-panel border border-line bg-surface-raised p-4">
-      <div className="flex items-start gap-3">
-        <Skeleton className="size-10 rounded-control" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-3 w-1/3" />
+    <div
+      className="rounded-card border border-line bg-surface-raised"
+      /*
+       * Inherited by every `.animate-skeleton` inside, which reads it as its
+       * `animation-delay`. A custom property is the mechanism because `animation-delay`
+       * itself does not inherit — setting it on this wrapper would do nothing.
+       */
+      style={delay > 0 ? ({ '--skeleton-delay': `${String(delay)}ms` } as CSSProperties) : undefined}
+    >
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <Skeleton className="size-10 rounded-control" />
+          <Skeleton className="h-3 w-20" />
         </div>
+        {/* The serif name: one tall bar, since it is the card's dominant element. */}
+        <Skeleton className="mt-4 h-5 w-3/4" />
+        <Skeleton className="mt-2.5 h-2.5 w-2/5" />
+        <div className="mt-4 space-y-1.5">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-4/5" />
+        </div>
+        <Skeleton className="mt-4 h-3 w-3/5" />
       </div>
-      <div className="mt-3.5 space-y-1.5">
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-4/5" />
-      </div>
-      <div className="mt-4 flex gap-1.5">
-        <Skeleton className="h-5 w-16" />
-        <Skeleton className="h-5 w-12" />
-        <Skeleton className="h-5 w-14" />
-      </div>
-      <div className="mt-4 flex items-center justify-between border-t border-line pt-3">
-        <Skeleton className="h-3.5 w-24" />
-        <Skeleton className="h-3.5 w-16" />
+      <div className="flex items-center justify-between border-t border-line px-5 py-3">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-2.5 w-20" />
+        </div>
+        <Skeleton className="h-3 w-10" />
       </div>
     </div>
   );
@@ -58,11 +75,17 @@ export function AgentGridSkeleton({ count = 9 }: { count?: number }) {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
     >
       <span className="sr-only">Loading agents…</span>
       {Array.from({ length: count }, (_, index) => (
-        <AgentCardSkeleton key={index} />
+        /*
+         * Staggered so the grid resolves as a wave rather than pulsing in unison. A
+         * dozen cards blinking on the same frame reads as a broken screen; a slight
+         * offset reads as loading. Wrapped at six steps so late cards never lag
+         * visibly behind the first row.
+         */
+        <AgentCardSkeleton key={index} delay={(index % 6) * 90} />
       ))}
     </div>
   );
@@ -71,25 +94,26 @@ export function AgentGridSkeleton({ count = 9 }: { count?: number }) {
 /** Mirrors the agent profile so the page does not reflow when data arrives. */
 export function AgentProfileSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true" role="status">
+    <div className="space-y-10" aria-busy="true" role="status">
       <span className="sr-only">Loading agent…</span>
-      <div className="flex items-start gap-4">
-        <Skeleton className="size-20 rounded-panel" />
-        <div className="flex-1 space-y-3 pt-1">
-          <Skeleton className="h-7 w-72 max-w-full" />
-          <Skeleton className="h-4 w-full max-w-xl" />
-          <div className="flex gap-1.5">
-            <Skeleton className="h-5 w-20" />
-            <Skeleton className="h-5 w-16" />
+      <div className="space-y-5">
+        <Skeleton className="h-3 w-24" />
+        <div className="flex items-start gap-5">
+          <Skeleton className="size-20 rounded-panel" />
+          <div className="flex-1 space-y-4 pt-1">
+            {/* The display-serif name, which dominates the real header. */}
+            <Skeleton className="h-10 w-96 max-w-full" />
+            <Skeleton className="h-4 w-full max-w-xl" />
           </div>
         </div>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[1fr_20rem]">
-        <div className="space-y-3">
-          <Skeleton className="h-36 rounded-panel" />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="space-y-4">
+          <Skeleton className="h-40 rounded-panel" />
           <Skeleton className="h-52 rounded-panel" />
+          <Skeleton className="h-44 rounded-panel" />
         </div>
-        <Skeleton className="h-64 rounded-panel" />
+        <Skeleton className="h-72 rounded-panel" />
       </div>
     </div>
   );
@@ -122,16 +146,22 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-panel border border-dashed border-line-strong bg-surface-inset px-6 py-16 text-center',
+        /*
+         * Dashed, and inset rather than raised — an empty result should read as a hollow
+         * in the page, not as a card containing the word "nothing". The title is set in
+         * the display serif because these are moments the product speaks to the user
+         * directly, and they deserve the same voice as the rest of it.
+         */
+        'flex flex-col items-center justify-center rounded-panel border border-dashed border-line-strong bg-surface-inset px-6 py-20 text-center',
         className,
       )}
     >
-      <div className="flex size-10 items-center justify-center rounded-control bg-surface-overlay">
+      <div className="flex size-11 items-center justify-center rounded-control border border-line bg-surface-overlay/60">
         <Icon className="size-4 text-ink-faint" aria-hidden="true" />
       </div>
-      <h3 className="mt-4 text-sm font-semibold text-ink">{title}</h3>
-      <p className="mt-1.5 max-w-md text-xs leading-5 text-ink-muted">{description}</p>
-      {action ? <div className="mt-5">{action}</div> : null}
+      <h3 className="display mt-5 text-xl text-ink">{title}</h3>
+      <p className="mt-2.5 max-w-md text-xs leading-6 text-ink-muted">{description}</p>
+      {action ? <div className="mt-7">{action}</div> : null}
     </div>
   );
 }
@@ -164,20 +194,21 @@ export function ErrorState({
       // `alert` so assistive tech announces a failure the user did not trigger.
       role="alert"
       className={cn(
-        'flex flex-col items-center justify-center rounded-panel border border-critical/25 bg-critical-wash/12 px-6 py-14 text-center',
+        'flex flex-col items-center justify-center rounded-panel border border-critical/25 bg-critical-wash/12 px-6 py-18 text-center',
         className,
       )}
     >
-      <div className="flex size-10 items-center justify-center rounded-control bg-critical-wash/40">
+      <div className="flex size-11 items-center justify-center rounded-control border border-critical/25 bg-critical-wash/40">
         <Icon className="size-4 text-critical" aria-hidden="true" />
       </div>
-      <h3 className="mt-4 text-sm font-semibold text-ink">{title}</h3>
-      <p className="mt-1.5 max-w-lg text-xs leading-5 text-ink-secondary">{detail}</p>
+      <h3 className="display mt-5 text-xl text-ink">{title}</h3>
+      <p className="mt-2.5 max-w-lg text-xs leading-6 text-ink-secondary">{detail}</p>
       {requestId ? (
-        <p className="mt-3 font-mono text-3xs text-ink-faint">ref {requestId}</p>
+        // Quotable in a bug report. Mono, and dim enough not to alarm.
+        <p className="mt-4 font-mono text-3xs text-ink-faint">ref {requestId}</p>
       ) : null}
       {onRetry ? (
-        <Button variant="secondary" size="sm" className="mt-5" onClick={onRetry}>
+        <Button variant="secondary" size="sm" className="mt-7" onClick={onRetry}>
           <RotateCw className="size-3.5" aria-hidden="true" />
           Try again
         </Button>
