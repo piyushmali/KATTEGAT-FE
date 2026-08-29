@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { AgentAvatar } from '../../components/ui/agent-avatar';
-import { Badge } from '../../components/ui/badge';
 import { Skeleton } from '../../components/ui/states';
 import { CATEGORY_LABELS } from '../../lib/api/contract';
 import { useAgents } from '../discovery/use-agents';
@@ -32,26 +32,37 @@ export function AgentPreview() {
 
   return (
     <div className="lit-edge overflow-hidden rounded-panel border border-line bg-surface-raised">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="size-1.5 animate-live rounded-pill bg-positive" aria-hidden="true" />
-          <h2 className="eyebrow">Recently registered</h2>
+      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="size-1.5 animate-live rounded-pill bg-positive ring-2 ring-positive/20"
+            aria-hidden="true"
+          />
+          <h2 className="eyebrow">Live from the registry</h2>
         </div>
         <Link
           href="/discover"
-          className="inline-flex items-center gap-1 text-2xs font-medium text-ink-muted transition-colors hover:text-amber"
+          className="group inline-flex items-center gap-1.5 text-2xs font-medium text-ink-muted transition-colors hover:text-amber"
         >
           Browse all
-          <ArrowRight className="size-3" aria-hidden="true" />
+          <ArrowRight
+            className="size-3 transition-transform duration-300 ease-fjord group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
         </Link>
       </div>
 
       <ul className="divide-y divide-line">
         {isLoading
           ? Array.from({ length: 5 }, (_, index) => (
-              <li key={index} className="flex items-center gap-3 px-4 py-3">
+              <li
+                key={index}
+                className="flex items-center gap-3.5 px-5 py-4"
+                // Staggered to match the agent grid, so both lists load the same way.
+                style={{ '--skeleton-delay': `${String(index * 90)}ms` } as CSSProperties}
+              >
                 <Skeleton className="size-8 rounded-sm" />
-                <div className="flex-1 space-y-1.5">
+                <div className="flex-1 space-y-2">
                   <Skeleton className="h-3 w-2/5" />
                   <Skeleton className="h-2.5 w-3/5" />
                 </div>
@@ -66,7 +77,7 @@ export function AgentPreview() {
                 <li key={agent.identity.id}>
                   <Link
                     href={`/agents/${encodeURIComponent(agent.identity.id)}`}
-                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-overlay/60"
+                    className="group flex items-center gap-3.5 px-5 py-4 transition-colors duration-300 hover:bg-surface-overlay/50"
                   >
                     <AgentAvatar
                       agentId={agent.identity.id}
@@ -74,22 +85,27 @@ export function AgentPreview() {
                       size="sm"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-ink">
+                      {/* Serif name, matching the card — one agent, one treatment. */}
+                      <p className="display truncate text-sm text-ink transition-colors duration-300 group-hover:text-amber-bright">
                         {agent.profile.name}
                       </p>
-                      <p className="mt-0.5 truncate text-3xs text-ink-faint">
+                      <p className="mt-1 truncate text-3xs text-ink-faint">
                         {agent.profile.description ?? 'No description published'}
                       </p>
                     </div>
                     {classified ? (
-                      <Badge tone="amber" className="hidden shrink-0 sm:inline-flex">
+                      <span className="eyebrow hidden shrink-0 text-amber/70 sm:inline">
                         {CATEGORY_LABELS[primary.category]}
-                      </Badge>
+                      </span>
                     ) : (
                       <span className="hidden shrink-0 font-mono text-3xs text-ink-faint sm:inline">
                         #{agent.identity.agentId}
                       </span>
                     )}
+                    <ArrowRight
+                      className="hidden size-3 shrink-0 text-line-strong transition-all duration-300 ease-fjord group-hover:translate-x-0.5 group-hover:text-amber sm:block"
+                      aria-hidden="true"
+                    />
                   </Link>
                 </li>
               );

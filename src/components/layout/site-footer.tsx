@@ -10,12 +10,13 @@ import { ERC8004_ADDRESSES, EXPECTED_CHAIN, explorerUrl } from '../../lib/web3/c
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-line">
-      <div className="mx-auto max-w-[85rem] px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-8 lg:flex-row lg:justify-between">
+    <footer className="mt-24 border-t border-line">
+      <div className="mx-auto max-w-shell px-4 py-14 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-12 lg:flex-row lg:justify-between lg:gap-16">
           <div className="max-w-sm">
-            <p className="text-[0.8125rem] font-semibold tracking-[0.16em] text-ink">KATTEGAT</p>
-            <p className="mt-2 text-xs leading-5 text-ink-muted">
+            {/* Same wordmark treatment as the header, so the brand closes as it opened. */}
+            <p className="display text-[0.9375rem] tracking-[0.22em] text-ink">KATTEGAT</p>
+            <p className="mt-4 text-xs leading-6 text-ink-muted">
               The discovery and trust layer for autonomous agents on {EXPECTED_CHAIN.name}. Agent
               identity, capabilities and reputation are read from the ERC-8004 registries —
               categories are derived by KATTEGAT and always shown with their evidence.
@@ -99,7 +100,12 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <p className="mt-10 border-t border-line pt-6 text-3xs text-ink-faint">
+        {/*
+         * The product's standing commitment, and the last thing on every page. Kept on a
+         * luminous seam rather than a plain rule — the waterline motif from the hero,
+         * closing the page where the site opened.
+         */}
+        <p className="horizon mt-14 pt-8 pb-1 text-3xs leading-5 text-ink-faint">
           KATTEGAT reports only what it can evidence. Where data does not exist — reputation,
           activity, performance — it is shown as absent rather than as zero.
         </p>

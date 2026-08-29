@@ -53,13 +53,20 @@ export function HiringPanel({ agentName }: { agentName: string }) {
       />
 
       <div className="p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-control bg-amber-wash/40">
+        <div>
+          <div className="flex size-10 items-center justify-center rounded-control border border-amber-dim/25 bg-amber-wash/35">
             <ShieldCheck className="size-4 text-amber" aria-hidden="true" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-ink">Scoped authority, not wallet access</p>
-            <p className="mt-1.5 text-xs leading-5 text-ink-muted">
+          <div className="mt-4">
+            {/*
+             * The promise this panel exists to make, in the display voice. It is the one
+             * sentence a user must not skim, because it is the difference between
+             * scoped authority and handing over a wallet.
+             */}
+            <p className="display text-lg leading-snug text-ink">
+              Scoped authority, <em>not</em> wallet access
+            </p>
+            <p className="mt-2.5 text-xs leading-6 text-ink-muted">
               When hiring goes live, putting {agentName} to work will grant it a bounded session —
               never open-ended access to your funds. You will see and approve every term below
               before anything is signed.
@@ -67,34 +74,45 @@ export function HiringPanel({ agentName }: { agentName: string }) {
           </div>
         </div>
 
-        <dl className="mt-4 grid gap-2 sm:grid-cols-2">
+        {/*
+         * Divided by hairlines rather than boxed into four cards. These are the terms of
+         * an agreement, so they should read as a list of clauses — nesting four bordered
+         * tiles inside an already-bordered panel is the exact container stacking that
+         * makes an interface look assembled rather than designed.
+         */}
+        <dl className="mt-6 space-y-4">
           {AUTHORITY_TERMS.map((term) => (
-            <div
-              key={term.label}
-              className="rounded-card border border-line bg-surface-inset p-3"
-            >
-              <div className="flex items-center gap-2">
-                <term.icon className="size-3.5 text-ink-faint" aria-hidden="true" />
-                <dt className="text-2xs tracking-wide text-ink-faint uppercase">{term.label}</dt>
+            <div key={term.label} className="border-t border-line pt-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <term.icon className="size-3.5 shrink-0 text-ink-faint" aria-hidden="true" />
+                  <dt className="eyebrow">{term.label}</dt>
+                </div>
+                <dd className="shrink-0 text-xs font-medium text-amber/90">{term.value}</dd>
               </div>
-              <dd className="mt-1.5 text-xs font-medium text-ink">{term.value}</dd>
-              <p className="mt-1 text-3xs leading-4 text-ink-muted">{term.detail}</p>
+              <p className="mt-2 text-3xs leading-5 text-ink-muted">{term.detail}</p>
             </div>
           ))}
         </dl>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-7 space-y-2.5">
           {/*
            * Disabled rather than absent: it communicates that hiring is the intended
            * destination of this page, while being honest that it does not work yet.
            * A live-looking button that did nothing would be worse than either.
            */}
-          <Button variant="primary" size="md" disabled title="Hiring is not enabled yet">
+          <Button
+            variant="primary"
+            size="lg"
+            disabled
+            title="Hiring is not enabled yet"
+            className="w-full"
+          >
             Hire agent
           </Button>
-          <span className="text-2xs text-ink-faint">
+          <p className="text-2xs leading-5 text-ink-faint">
             Available once agent sessions ship on BNB Smart Chain.
-          </span>
+          </p>
         </div>
       </div>
     </Panel>

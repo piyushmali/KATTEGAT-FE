@@ -63,29 +63,32 @@ export function AgentReputationPanel({
         {hasEvidence ? (
           <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
             <div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="tabular text-4xl leading-none font-semibold tracking-tight text-ink">
+              {/*
+               * The figure the entire product turns on, so it is set in the display face
+               * at display scale. `tabular` keeps the digits from shifting width when a
+               * live registry read replaces the cached snapshot mid-view.
+               */}
+              <div className="flex items-baseline gap-2">
+                <span className="display tabular text-display-sm text-ink">
                   {score.toFixed(2)}
                 </span>
-                <span className="text-sm text-ink-faint">/ 5</span>
+                <span className="display text-lg text-ink-faint">/ 5</span>
               </div>
               <p className="mt-2 text-2xs text-ink-muted">
                 Mean of all non-revoked client feedback
               </p>
             </div>
 
-            <dl className="flex gap-6">
+            <dl className="flex gap-8">
               <div>
-                <dt className="text-3xs tracking-wide text-ink-faint uppercase">Reviews</dt>
-                <dd className="tabular mt-1 text-lg font-semibold text-ink">{feedbackCount}</dd>
+                <dt className="eyebrow">Reviews</dt>
+                <dd className="display tabular mt-1.5 text-2xl text-ink">{feedbackCount}</dd>
               </div>
               <div>
-                <dt className="text-3xs tracking-wide text-ink-faint uppercase">
-                  Unique clients
-                </dt>
-                <dd className="tabular mt-1 flex items-center gap-1.5 text-lg font-semibold text-ink">
+                <dt className="eyebrow">Unique clients</dt>
+                <dd className="mt-1.5 flex items-center gap-2">
                   <Users className="size-3.5 text-ink-faint" aria-hidden="true" />
-                  {clientCount}
+                  <span className="display tabular text-2xl text-ink">{clientCount}</span>
                 </dd>
               </div>
             </dl>
@@ -95,9 +98,14 @@ export function AgentReputationPanel({
            * The absent case, given real weight. Worded so a user cannot mistake it
            * for a poor score — that misreading is the whole risk.
            */
-          <div className="rounded-card border border-dashed border-line-strong bg-surface-inset px-4 py-5">
-            <p className="text-sm font-medium text-ink">No reputation evidence yet</p>
-            <p className="mt-1.5 max-w-lg text-xs leading-5 text-ink-muted">
+          <div className="rounded-card border border-dashed border-line-strong bg-surface-inset px-5 py-6">
+            {/*
+             * Set in the display face at the same weight the score would have had. An
+             * absence stated quietly reads as a missing feature; stated at full size it
+             * reads as a finding, which is what it is.
+             */}
+            <p className="display text-xl text-ink">No reputation evidence yet</p>
+            <p className="mt-2.5 max-w-lg text-xs leading-6 text-ink-muted">
               No client has recorded feedback for this agent on the ERC-8004 reputation
               registry. This is an <strong className="font-medium text-ink-secondary">absence
               of evidence</strong>, not a low score — treat it as an unknown when deciding
