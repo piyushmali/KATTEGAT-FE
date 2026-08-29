@@ -36,6 +36,9 @@ export const AGENT_CATEGORIES = [
   'security-verification',
   'code-smart-contracts',
   'content-media',
+  // v3: the largest coherent cluster in the registry — agents that score or vote on AI
+  // model outputs. Matched nothing at all before, so it needed a category, not a rule.
+  'model-evaluation',
   'uncategorized',
 ] as const;
 
@@ -60,6 +63,7 @@ export const CATEGORY_LABELS: Record<AgentCategoryId, string> = {
   'security-verification': 'Security',
   'code-smart-contracts': 'Code',
   'content-media': 'Content',
+  'model-evaluation': 'Evaluation',
   uncategorized: 'Unclassified',
 };
 
