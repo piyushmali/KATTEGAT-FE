@@ -45,9 +45,13 @@ describe('AgentCard', () => {
   it('shows a decoded reputation score, not the raw fixed-point value', () => {
     render(<AgentCard agent={byId('56:900001')} />);
 
-    // The fixture carries 462 at 2dp. Showing "462" would be the bug.
-    expect(screen.getByText('4.62')).toBeInTheDocument();
-    expect(screen.queryByText('462')).not.toBeInTheDocument();
+    /*
+     * The fixture carries 9240 at 2dp, so the score is 92.4 on ERC-8004's 0–100 scale.
+     * Showing "9240" would be the original bug; showing "4.62" would be the second one,
+     * where a correctly decoded value was reported against an invented 0–5 scale.
+     */
+    expect(screen.getByText('92.4')).toBeInTheDocument();
+    expect(screen.queryByText('9240')).not.toBeInTheDocument();
     expect(screen.getByText(/41 reviews/i)).toBeInTheDocument();
     expect(screen.getByText(/28 clients/i)).toBeInTheDocument();
   });

@@ -145,7 +145,14 @@ export const agentReputationSchema = z
     /** Raw fixed-point pair from the ERC-8004 registry, preserved for display. */
     summaryValue: raw.summary_value,
     summaryDecimals: raw.summary_decimals,
-    /** Decoded score. Null means no feedback at all, which is not a zero score. */
+    /**
+     * Decoded score on the 0–100 scale ERC-8004 defines — never 0–5.
+     *
+     * Null covers every case where no score can be stated: no feedback at all, an
+     * incomplete fixed-point pair, or a recorded value outside 0–100. The registry field
+     * is generic enough to hold a latency or a cost, so an out-of-range value is not a
+     * rating and the backend refuses to present it as one. None of these is a zero.
+     */
     score: raw.score,
     source: raw.source,
     computedAt: raw.computed_at,

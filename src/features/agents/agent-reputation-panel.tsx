@@ -3,6 +3,7 @@ import { Badge } from '../../components/ui/badge';
 import { Panel, PanelHeader } from '../../components/ui/card';
 import { InlineSpinner } from '../../components/ui/states';
 import type { Agent, ReputationDetail } from '../../lib/api/contract';
+import { formatScore } from '../../lib/utils/format';
 
 /**
  * The trust surface — the panel a hiring decision actually turns on.
@@ -70,12 +71,17 @@ export function AgentReputationPanel({
                */}
               <div className="flex items-baseline gap-2">
                 <span className="display tabular text-display-sm text-ink">
-                  {score.toFixed(2)}
+                  {formatScore(score)}
                 </span>
-                <span className="display text-lg text-ink-faint">/ 5</span>
+                {/*
+                 * 100, not 5. ERC-8004 defines a feedback score as 0–100; this read
+                 * "/ 5" while the backend returned a correctly decoded 100, so a perfect
+                 * record rendered as "100.00 / 5" — a real number on an invented scale.
+                 */}
+                <span className="display text-lg text-ink-faint">/ 100</span>
               </div>
               <p className="mt-2 text-2xs text-ink-muted">
-                Mean of all non-revoked client feedback
+                Mean of all non-revoked client feedback, on the 0–100 scale ERC-8004 defines
               </p>
             </div>
 

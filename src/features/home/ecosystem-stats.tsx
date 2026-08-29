@@ -102,12 +102,18 @@ export function HeroIndexStrip() {
 }
 
 /**
- * Feedback coverage, stated honestly.
+ * Feedback coverage — a measurement of KATTEGAT's index, not a claim about the chain.
  *
- * At the time of writing no agent in the index has on-chain feedback, and that is a
- * genuinely interesting fact about how early this ecosystem is — so it is reported
- * plainly rather than hidden because the number is zero. Zero *recorded reviews* is a
- * real measurement; it is not the same as giving an agent a zero score.
+ * The distinction is load-bearing and this component previously got it wrong. Reputation
+ * is read from the registry lazily, when someone opens an agent's page, so this counter
+ * reflects how much of the index has been *looked at* rather than how much feedback
+ * exists on BNB Smart Chain. The earlier copy said "no on-chain feedback has been
+ * recorded against any indexed agent", which read as a finding about the ecosystem while
+ * really describing our own cache — and it was false: agents 56:1 through 56:3 each carry
+ * real registry feedback that simply had not been read yet.
+ *
+ * So the scope is now stated in the sentence. Zero *read so far* is an honest
+ * measurement; "none exists" was not ours to assert.
  */
 export function FeedbackCoverage() {
   const { data, isLoading, isError } = useStats();
@@ -117,8 +123,9 @@ export function FeedbackCoverage() {
     <p className="text-xs leading-6 text-ink-muted">
       {data.feedbackRecords === 0 ? (
         <>
-          No on-chain feedback has been recorded against any indexed agent yet. KATTEGAT reports
-          that as an absence of evidence — never as a zero rating.
+          No client feedback has been read into KATTEGAT&rsquo;s index yet. Reputation is fetched
+          from the registry when an agent&rsquo;s page is opened, so this counts what has been
+          read — not what exists on chain.
         </>
       ) : (
         <>
@@ -129,7 +136,8 @@ export function FeedbackCoverage() {
           <span className="tabular font-medium text-ink">
             {formatCount(data.ratedAgents)}
           </span>{' '}
-          rated agents, read from the ERC-8004 reputation registry.
+          {data.ratedAgents === 1 ? 'agent' : 'agents'} read so far from the ERC-8004 reputation
+          registry. Coverage grows as agents are opened, so this is a floor rather than a total.
         </>
       )}
     </p>

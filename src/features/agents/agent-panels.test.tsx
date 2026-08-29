@@ -48,17 +48,21 @@ describe('AgentReputationPanel', () => {
     expect(screen.getByText(/absence/i)).toBeInTheDocument();
     // The failure mode this guards: rendering a 0 the user reads as a bad rating.
     expect(screen.queryByText('0.00')).not.toBeInTheDocument();
-    expect(screen.queryByText('0 / 5')).not.toBeInTheDocument();
+    // Neither a zero nor a scale denominator should appear when there is no evidence.
+    expect(screen.queryByText('/ 100')).not.toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
   it('shows the decoded score and the raw on-chain pair when evidence exists', () => {
     render(<AgentReputationPanel agent={byId('56:900001')} live={null} isLoading={false} />);
 
-    expect(screen.getByText('4.62')).toBeInTheDocument();
+    expect(screen.getByText('92.4')).toBeInTheDocument();
     expect(screen.getByText('41')).toBeInTheDocument();
     // The raw fixed-point pair is exposed so a reader can verify our arithmetic.
-    expect(screen.getByText(/raw 462 @ 2dp/i)).toBeInTheDocument();
+    expect(screen.getByText(/raw 9240 @ 2dp/i)).toBeInTheDocument();
     expect(screen.getByText(/reputation registry/i)).toBeInTheDocument();
+    // The scale is stated, so a reader cannot mistake 92.4 for a five-star rating.
+    expect(screen.getByText('/ 100')).toBeInTheDocument();
   });
 
   it('states the provenance of a live reading', () => {
