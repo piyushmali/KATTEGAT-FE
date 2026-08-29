@@ -3,7 +3,17 @@
 import type { ReactNode } from 'react';
 import { WagmiProvider } from 'wagmi';
 import { wagmiConfig } from '../lib/web3/wagmi';
+import { installProviderRejectionGuard } from '../lib/web3/provider-rejections';
 import { QueryProvider } from './query-provider';
+
+/*
+ * Installed at module scope rather than in an effect, because it has to be listening
+ * before wagmi's `hydrate` mount hook runs `connector.setup()` on every wallet EIP-6963
+ * discovered. An effect would attach too late to catch that first wave.
+ *
+ * Guarded for the browser inside the function, so importing this on the server is inert.
+ */
+installProviderRejectionGuard();
 
 /**
  * Single client-side provider tree.

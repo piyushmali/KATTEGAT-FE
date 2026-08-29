@@ -10,9 +10,6 @@ import { AgentDetailView } from '@/features/agents/agent-detail-view';
 export default async function AgentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  return (
-    <div className="mx-auto max-w-[85rem] px-4 py-8 sm:px-6 lg:px-8">
-      <AgentDetailView id={decodeURIComponent(id)} />
-    </div>
-  );
+  // The view manages its own full-bleed header, so the page adds no container.
+  return <AgentDetailView id={decodeURIComponent(id)} />;
 }

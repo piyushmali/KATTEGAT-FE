@@ -162,11 +162,28 @@ export function AgentFilters({
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-2xs text-ink-faint" aria-live="polite">
-            {totalForQuery === undefined
-              ? null
-              : `${formatCount(totalForQuery)} ${totalForQuery === 1 ? 'agent' : 'agents'}`}
+        <div className="flex items-center gap-3">
+          {/*
+           * The result count is the answer to whatever the user just did, so it is set
+           * in the display face and given the figure prominence a headline number
+           * deserves. `aria-live` announces it when a filter changes the total.
+           */}
+          {/*
+           * `role="status"` rather than a bare `aria-live`, so the region is announced
+           * *and* addressable by role. The figure is split into its own element for the
+           * display face, which a text-node query cannot see through — asserting on this
+           * region's whole text content is both more robust and closer to what a screen
+           * reader actually reads out.
+           */}
+          <span className="text-2xs text-ink-faint" role="status">
+            {totalForQuery === undefined ? null : (
+              <>
+                <span className="display tabular text-sm text-ink-secondary">
+                  {formatCount(totalForQuery)}
+                </span>{' '}
+                {totalForQuery === 1 ? 'agent' : 'agents'}
+              </>
+            )}
           </span>
           <label className="flex items-center gap-1.5">
             <span className="sr-only">Sort agents by</span>

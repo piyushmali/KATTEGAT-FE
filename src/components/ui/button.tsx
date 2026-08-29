@@ -3,17 +3,39 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '../../lib/utils/cn';
 
+/**
+ * Button primitive.
+ *
+ * Four variants, and the restraint is the design: amber is the single primary action
+ * per view, and more than one stops it meaning anything. Everything else recedes.
+ *
+ * Motion is a press, not a bounce. `active:translate-y-px` with a shadow that collapses
+ * on the same frame reads as a physical key going down — enough feedback to feel
+ * mechanical, short enough that a fast clicker never waits for it. Interface feedback
+ * uses the quick easing; the long cinematic curve belongs to scroll reveals, not to
+ * something the hand is touching.
+ */
+
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  // Amber is the single primary action per view. More than one and it stops meaning anything.
+  /*
+   * The one warm light. Antique gold rather than brand yellow, with a shadow that
+   * deepens on hover so the key appears to rise before it is pressed.
+   */
   primary:
-    'bg-amber text-amber-ink font-semibold hover:bg-amber-bright active:bg-amber shadow-pop',
+    'bg-amber text-amber-ink font-semibold shadow-pop hover:bg-amber-bright hover:shadow-float active:shadow-none',
+  /*
+   * Weathered metal: a translucent fill over whatever surface it sits on, held by a
+   * hairline. Translucent rather than solid so it belongs to its panel instead of
+   * cutting a lighter rectangle into it.
+   */
   secondary:
-    'bg-surface-overlay text-ink ring-1 ring-inset ring-line-strong hover:bg-surface-hover hover:ring-line-strong',
-  ghost: 'text-ink-secondary hover:bg-surface-overlay hover:text-ink',
-  danger: 'bg-critical-wash/50 text-critical ring-1 ring-inset ring-critical/30 hover:bg-critical-wash',
+    'bg-surface-overlay/70 text-ink ring-1 ring-inset ring-line-strong hover:bg-surface-hover hover:ring-line-strong active:bg-surface-overlay',
+  ghost: 'text-ink-muted hover:bg-surface-overlay/60 hover:text-ink',
+  danger:
+    'bg-critical-wash/45 text-critical ring-1 ring-inset ring-critical/30 hover:bg-critical-wash hover:ring-critical/45',
 };
 
 const SIZES: Record<ButtonSize, string> = {
@@ -44,8 +66,11 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex shrink-0 items-center justify-center transition-colors duration-150',
-        'disabled:pointer-events-none disabled:opacity-45',
+        'inline-flex shrink-0 items-center justify-center font-medium whitespace-nowrap',
+        // Only the properties that actually change, so this never animates layout.
+        'transition-[background-color,color,box-shadow,transform,--tw-ring-color] duration-200 ease-out-quart',
+        'active:translate-y-px',
+        'disabled:pointer-events-none disabled:opacity-40',
         VARIANTS[variant],
         SIZES[size],
         className,

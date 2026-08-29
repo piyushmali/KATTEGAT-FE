@@ -26,13 +26,13 @@ export default function SiteError({
   }, [error]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-20">
+    <div className="mx-auto max-w-2xl px-4 py-24 sm:px-6">
       <ErrorState
         title="This page failed to load"
         detail="An unexpected error stopped this page from rendering. Retrying often clears it."
         requestId={error.digest ?? null}
       />
-      <div className="mt-4 flex justify-center">
+      <div className="mt-6 flex justify-center">
         <Button variant="secondary" size="sm" onClick={reset}>
           Try again
         </Button>

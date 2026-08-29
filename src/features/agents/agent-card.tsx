@@ -1,16 +1,29 @@
 import Link from 'next/link';
-import { ArrowUpRight, ShieldQuestion, Sparkles } from 'lucide-react';
+import { ArrowUpRight, ShieldQuestion } from 'lucide-react';
 import { AgentAvatar } from '../../components/ui/agent-avatar';
-import { Badge } from '../../components/ui/badge';
+import { Badge, StatusDot } from '../../components/ui/badge';
 import { CATEGORY_LABELS, type Agent, type AgentCategoryAssignment } from '../../lib/api/contract';
 import { truncateAddress } from '../../lib/web3/chain';
 
 /**
  * The marketplace's primary unit of discovery.
  *
- * Answers, in scanning order, the questions a browsing user actually has: what is
- * this, what does it do, is it live, what does it speak, and what evidence exists.
- * Everything else belongs on the profile.
+ * Answers, in scanning order, the questions a browsing user actually has: what is this,
+ * what does it do, is it live, what does it speak, and what evidence exists. Everything
+ * else belongs on the profile.
+ *
+ * COMPOSITION
+ *
+ * The name is set in the display serif and given real size, because in a grid of
+ * twenty-four the name is what the eye is hunting for and it should win outright.
+ * Everything under it is quiet by comparison.
+ *
+ * Capabilities are dot-separated text rather than chips. An earlier revision rendered
+ * up to three capabilities, three traits and a category as badges, which meant a single
+ * card could carry seven pills and a full grid became confetti — the badges stopped
+ * reading as signals precisely because everything was one. Chips are now reserved for
+ * things that genuinely change a decision: an unresolvable registration file, a TEE
+ * attestation, a paid endpoint.
  *
  * Two honesty rules it enforces:
  *  - An agent with no feedback reads "No feedback yet", never a 0 score. Absence of
@@ -47,42 +60,36 @@ export function AgentCard({ agent }: { agent: Agent }) {
   const extraCapabilities = agent.profile.capabilities.length - capabilities.length;
 
   return (
-    <article className="group relative flex flex-col rounded-panel border border-line bg-surface-raised transition-colors hover:border-line-strong hover:bg-surface-overlay/50">
-      <div className="flex flex-1 flex-col p-4">
+    <article
+      className={[
+        'group relative isolate flex flex-col rounded-card border border-line bg-surface-raised',
+        // Only compositor properties move, so a 24-card grid stays smooth on hover.
+        'transition-[transform,border-color,background-color,box-shadow] duration-300 ease-fjord',
+        'hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface-overlay/40 hover:shadow-cast',
+        // Keyboard parity: the card reacts when the link inside it is focused.
+        'focus-within:-translate-y-0.5 focus-within:border-line-strong',
+      ].join(' ')}
+    >
+      {/*
+       * A light that catches the top edge on approach. The same one-pixel highlight the
+       * panels use, revealed rather than permanent, which is what makes the card feel
+       * like it is lifting toward a light source instead of just changing colour.
+       */}
+      <span
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-dim/50 to-transparent opacity-0 transition-opacity duration-300 ease-fjord group-hover:opacity-100"
+        aria-hidden="true"
+      />
+
+      <div className="flex flex-1 flex-col p-5">
         {/* ------------------------------ identity ----------------------------- */}
-        <div className="flex items-start gap-3">
+        <div className="flex items-start justify-between gap-3">
           <AgentAvatar agentId={agent.identity.id} name={agent.profile.name} size="md" />
 
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-[0.8125rem] leading-5 font-semibold text-ink">
-              {/* The whole card is the hit area; the link keeps the accessible name. */}
-              <Link href={`/agents/${encodeURIComponent(agent.identity.id)}`}>
-                <span className="absolute inset-0 rounded-panel" aria-hidden="true" />
-                {agent.profile.name}
-              </Link>
-            </h3>
-            <div className="mt-1 flex items-center gap-1.5">
-              {declaredActive ? (
-                <span className="inline-flex items-center gap-1 text-3xs text-ink-muted">
-                  <span className="size-1 rounded-pill bg-positive" aria-hidden="true" />
-                  Declared active
-                </span>
-              ) : (
-                <span className="text-3xs text-ink-faint">Status not declared</span>
-              )}
-              <span className="text-ink-faint" aria-hidden="true">
-                ·
-              </span>
-              <span className="font-mono text-3xs text-ink-faint">
-                {agent.profile.protocolTag}
-              </span>
-            </div>
-          </div>
-
+          {/* Category as an eyebrow, not a chip: it is orientation, not a signal. */}
           {classified ? (
-            <Badge tone="amber" className="shrink-0">
+            <span className="eyebrow shrink-0 text-right text-amber/80">
               {CATEGORY_LABELS[primary.category]}
-            </Badge>
+            </span>
           ) : (
             <Badge
               tone="outline"
@@ -94,8 +101,32 @@ export function AgentCard({ agent }: { agent: Agent }) {
           )}
         </div>
 
+        {/*
+         * The name. Set in the serif and allowed two lines before truncating, because a
+         * clipped name is the one thing on this card a user cannot work around.
+         */}
+        <h3 className="display mt-4 text-lg leading-tight text-ink transition-colors duration-300 group-hover:text-amber-bright">
+          {/* The whole card is the hit area; the link keeps the accessible name. */}
+          <Link href={`/agents/${encodeURIComponent(agent.identity.id)}`} className="line-clamp-2">
+            <span className="absolute inset-0 z-10 rounded-card" aria-hidden="true" />
+            {agent.profile.name}
+          </Link>
+        </h3>
+
+        <div className="mt-2 flex items-center gap-2">
+          {declaredActive ? (
+            <StatusDot tone="positive" label="Declared active" className="text-3xs" />
+          ) : (
+            <span className="text-3xs text-ink-faint">Status not declared</span>
+          )}
+          <span className="text-line-strong" aria-hidden="true">
+            /
+          </span>
+          <span className="font-mono text-3xs text-ink-faint">{agent.profile.protocolTag}</span>
+        </div>
+
         {/* ----------------------------- description --------------------------- */}
-        <p className="mt-3 line-clamp-2 min-h-8 text-xs leading-4 text-ink-muted">
+        <p className="mt-4 line-clamp-2 min-h-9 text-xs leading-5 text-ink-muted">
           {agent.profile.description ??
             (metadataMissing
               ? 'Registration metadata could not be resolved from this agent’s URI.'
@@ -103,77 +134,83 @@ export function AgentCard({ agent }: { agent: Agent }) {
         </p>
 
         {/* ---------------------------- capabilities --------------------------- */}
-        {capabilities.length > 0 ? (
-          <div className="mt-3 flex flex-wrap items-center gap-1">
-            {capabilities.map((capability) => (
-              <Badge key={capability} tone="neutral" className="max-w-[11rem] truncate">
-                {capability}
-              </Badge>
-            ))}
-            {extraCapabilities > 0 ? (
-              <span className="text-3xs text-ink-faint">+{extraCapabilities}</span>
-            ) : null}
-          </div>
-        ) : metadataMissing ? (
-          <div className="mt-3">
+        <div className="mt-auto pt-4">
+          {capabilities.length > 0 ? (
+            <p className="truncate text-2xs text-ink-secondary">
+              {capabilities.map((capability, index) => (
+                <span key={capability}>
+                  {index > 0 ? (
+                    <span className="text-line-strong" aria-hidden="true">
+                      {' · '}
+                    </span>
+                  ) : null}
+                  {capability}
+                </span>
+              ))}
+              {extraCapabilities > 0 ? (
+                <span className="text-ink-faint"> +{extraCapabilities}</span>
+              ) : null}
+            </p>
+          ) : metadataMissing ? (
             <Badge tone="caution">
               <ShieldQuestion className="size-3" aria-hidden="true" />
               Metadata unresolved
             </Badge>
-          </div>
-        ) : (
-          <div className="mt-3">
-            <span className="text-3xs text-ink-faint">No capabilities declared</span>
-          </div>
-        )}
+          ) : (
+            <span className="text-2xs text-ink-faint">No capabilities declared</span>
+          )}
 
-        {/* --------------------------- trait signals --------------------------- */}
-        {traits.length > 0 || secondaryCount > 0 ? (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1">
-            {traits.map((entry) => (
-              <Badge key={entry.trait} tone={entry.tone}>
-                {entry.label}
-              </Badge>
-            ))}
-            {secondaryCount > 0 ? (
-              <span
-                className="inline-flex items-center gap-1 text-3xs text-ink-faint"
-                title={agent.categories
-                  .filter((entry) => !entry.isPrimary)
-                  .map((entry) => CATEGORY_LABELS[entry.category])
-                  .join(', ')}
-              >
-                <Sparkles className="size-2.5" aria-hidden="true" />
-                {secondaryCount} more {secondaryCount === 1 ? 'category' : 'categories'}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+          {/* Chips only for things that change a decision. */}
+          {traits.length > 0 || secondaryCount > 0 ? (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {traits.map((entry) => (
+                <Badge key={entry.trait} tone={entry.tone}>
+                  {entry.label}
+                </Badge>
+              ))}
+              {secondaryCount > 0 ? (
+                <span
+                  className="text-3xs text-ink-faint"
+                  title={agent.categories
+                    .filter((entry) => !entry.isPrimary)
+                    .map((entry) => CATEGORY_LABELS[entry.category])
+                    .join(', ')}
+                >
+                  +{secondaryCount} more {secondaryCount === 1 ? 'category' : 'categories'}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* ------------------------- evidence / footer ------------------------- */}
-      <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2.5">
+      <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <div className="min-w-0">
           {score !== null ? (
             <div className="flex items-baseline gap-1.5">
-              <span className="tabular text-sm font-semibold text-ink">{score.toFixed(2)}</span>
+              <span className="display tabular text-xl text-ink">{score.toFixed(2)}</span>
               <span className="text-3xs text-ink-faint">
                 {feedbackCount} {feedbackCount === 1 ? 'review' : 'reviews'}
                 {clientCount > 0 ? ` · ${String(clientCount)} clients` : ''}
               </span>
             </div>
           ) : (
-            // Never "0". Absence of evidence is its own state.
+            // Never "0". Absence of evidence is its own state, and saying so plainly is
+            // the product's entire position.
             <span className="text-2xs text-ink-faint">No feedback yet</span>
           )}
-          <p className="mt-0.5 truncate font-mono text-3xs text-ink-faint">
+          <p className="mt-1 truncate font-mono text-3xs text-ink-faint">
             #{agent.identity.agentId} · {truncateAddress(agent.identity.ownerAddress, 3)}
           </p>
         </div>
 
-        <span className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-ink-muted transition-colors group-hover:text-amber">
+        <span
+          className="inline-flex shrink-0 items-center gap-1 text-2xs font-medium text-ink-faint transition-all duration-300 ease-fjord group-hover:gap-1.5 group-hover:text-amber"
+          aria-hidden="true"
+        >
           View
-          <ArrowUpRight className="size-3" aria-hidden="true" />
+          <ArrowUpRight className="size-3" />
         </span>
       </div>
     </article>

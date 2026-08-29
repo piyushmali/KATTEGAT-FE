@@ -143,7 +143,19 @@ describe('HiringPanel', () => {
   it('frames hiring as scoped authority and never as wallet access', () => {
     render(<HiringPanel agentName="Meridian Rebalancer" />);
 
-    expect(screen.getByText(/scoped authority, not wallet access/i)).toBeInTheDocument();
+    /*
+     * Matched with a node-level predicate rather than a plain string, because "not" is
+     * emphasised in its own <em> and a text-node query cannot see across that. The
+     * element filter keeps the assertion on the single heading that makes the claim
+     * instead of matching every ancestor that happens to contain the words.
+     */
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          /scoped authority,\s*not\s*wallet access/i.test(element.textContent ?? ''),
+      ),
+    ).toBeInTheDocument();
     // All four bounds a user needs to understand before granting anything.
     expect(screen.getByText(/spend ceiling/i)).toBeInTheDocument();
     expect(screen.getByText(/session expiry/i)).toBeInTheDocument();
@@ -299,6 +311,12 @@ describe('AgentFilters', () => {
       />,
     );
 
-    expect(screen.getByText(/4,528 agents/i)).toBeInTheDocument();
+    /*
+     * Asserted against the live region's full text rather than a single text node: the
+     * figure is rendered in its own element so it can carry the display face, which
+     * splits "4,528" from "agents" in the DOM. `toHaveTextContent` reads across
+     * children, which is also what a screen reader announces for this region.
+     */
+    expect(screen.getByRole('status')).toHaveTextContent('4,528 agents');
   });
 });

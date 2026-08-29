@@ -70,20 +70,27 @@ export function DiscoveryView() {
   const agents = agentsQuery.data?.data ?? [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {isMockMode ? (
         <div
           role="status"
-          className="rounded-control border border-caution/30 bg-caution-wash/15 px-3 py-2 text-2xs text-caution"
+          className="flex items-center gap-2 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs text-caution"
         >
+          <span className="size-1 shrink-0 rounded-pill bg-caution" aria-hidden="true" />
           Mock data source — these agents are fixtures, not live ERC-8004 registry data.
         </div>
       ) : null}
 
       {/* -------------------------------- search ------------------------------- */}
-      <div className="relative">
+      {/*
+       * The primary instrument on this page, so it is given real presence: full width,
+       * body-sized text, and a deep inset well that lifts to a raised surface with a
+       * warm edge on focus. The group-focus-within colouring moves the icon too, so the
+       * whole control responds as one object rather than just gaining an outline.
+       */}
+      <div className="group relative">
         <Search
-          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-faint"
+          className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ink-faint transition-colors duration-300 group-focus-within:text-amber"
           aria-hidden="true"
         />
         <input
@@ -94,7 +101,7 @@ export function DiscoveryView() {
           }}
           placeholder="Search by name, capability or what you need done"
           aria-label="Search agents"
-          className="h-11 w-full rounded-card border border-line bg-surface-inset pr-10 pl-10 text-sm text-ink placeholder:text-ink-faint focus:border-amber-dim focus:bg-surface-raised focus:outline-none"
+          className="h-13 w-full rounded-card border border-line bg-surface-inset pr-11 pl-11 text-sm text-ink transition-[background-color,border-color] duration-300 ease-fjord placeholder:text-ink-faint focus:border-amber-dim/60 focus:bg-surface-raised focus:outline-none sm:text-base"
         />
         {draft.length > 0 ? (
           <button
@@ -103,7 +110,7 @@ export function DiscoveryView() {
               setDraft('');
             }}
             aria-label="Clear search"
-            className="absolute top-1/2 right-3 -translate-y-1/2 rounded-sm p-1 text-ink-faint transition-colors hover:text-ink"
+            className="absolute top-1/2 right-3.5 -translate-y-1/2 rounded-sm p-1 text-ink-faint transition-colors hover:text-ink"
           >
             <X className="size-3.5" aria-hidden="true" />
           </button>
@@ -173,7 +180,14 @@ export function DiscoveryView() {
         )
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {/*
+           * Deliberately not wrapped in `Reveal`. Scroll reveals belong to editorial
+           * content the user is reading through; results are the answer to a query they
+           * just made, and staging them would put an animation between a filter click
+           * and its result. Motion here would be decoration charged to the user's
+           * attention.
+           */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {agents.map((agent) => (
               <AgentCard key={agent.identity.id} agent={agent} />
             ))}
@@ -181,7 +195,7 @@ export function DiscoveryView() {
 
           {meta && meta.totalPages > 1 ? (
             <nav
-              className="flex items-center justify-between gap-4 border-t border-line pt-4"
+              className="mt-10 flex items-center justify-between gap-4 border-t border-line pt-6"
               aria-label="Agent pagination"
             >
               <Button
@@ -195,9 +209,14 @@ export function DiscoveryView() {
                 <ChevronLeft className="size-3.5" aria-hidden="true" />
                 Previous
               </Button>
-              <span className="tabular text-2xs text-ink-muted">
-                Page {formatCount(meta.page)} of {formatCount(meta.totalPages)}
+
+              {/* Position set in the display face, so the numbers read as a legend. */}
+              <span className="display tabular text-sm text-ink-muted">
+                {formatCount(meta.page)}
+                <span className="text-line-strong"> / </span>
+                {formatCount(meta.totalPages)}
               </span>
+
               <Button
                 variant="secondary"
                 size="sm"

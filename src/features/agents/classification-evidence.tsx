@@ -53,8 +53,8 @@ export function ClassificationEvidence({
           <div className="flex items-start gap-3 rounded-card border border-dashed border-line-strong bg-surface-inset p-4">
             <CircleHelp className="mt-0.5 size-4 shrink-0 text-ink-faint" aria-hidden="true" />
             <div>
-              <p className="text-sm font-medium text-ink">Not confidently classified</p>
-              <p className="mt-1.5 max-w-lg text-xs leading-5 text-ink-muted">
+              <p className="display text-lg text-ink">Not confidently classified</p>
+              <p className="mt-2 max-w-lg text-xs leading-6 text-ink-muted">
                 This agent’s declared capabilities and description did not match any category in
                 the KATTEGAT taxonomy strongly enough to assign one. It is listed as unclassified
                 rather than forced into the nearest bucket — a wrong category is worse than none,
@@ -79,7 +79,7 @@ export function ClassificationEvidence({
                     }
                     aria-hidden="true"
                   />
-                  <span className="text-sm font-semibold text-ink">
+                  <span className="display text-base text-ink">
                     {CATEGORY_LABELS[assignment.category]}
                   </span>
                   {assignment.isPrimary ? (
@@ -92,11 +92,17 @@ export function ClassificationEvidence({
                 {/* Confidence as a bar plus a number: shape first, precision second. */}
                 <div className="flex items-center gap-2">
                   <div
-                    className="h-1 w-20 overflow-hidden rounded-pill bg-surface-overlay"
+                    className="h-px w-24 overflow-hidden bg-line-strong"
                     role="presentation"
                   >
+                    {/*
+                     * A drawn rule rather than a progress pill. Confidence is a
+                     * measurement, and a hairline of exact length reads as an instrument
+                     * reading where a rounded bar reads as a game meter. The value is
+                     * carried in the adjacent text, so this is presentation only.
+                     */}
                     <div
-                      className={assignment.isPrimary ? 'h-full bg-amber' : 'h-full bg-ink-faint'}
+                      className={assignment.isPrimary ? 'h-full bg-amber' : 'h-full bg-ink-muted'}
                       style={{ width: `${String(Math.round(assignment.confidence * 100))}%` }}
                     />
                   </div>

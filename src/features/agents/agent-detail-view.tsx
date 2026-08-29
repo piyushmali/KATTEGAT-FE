@@ -33,13 +33,17 @@ export function AgentDetailView({ id }: { id: string }) {
   const reputationQuery = useAgentReputation(id);
 
   if (agentQuery.isLoading) {
-    return <AgentProfileSkeleton />;
+    return (
+      <div className="mx-auto max-w-shell px-4 py-12 sm:px-6 lg:px-8">
+        <AgentProfileSkeleton />
+      </div>
+    );
   }
 
   if (agentQuery.isError) {
     const error = agentQuery.error;
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl px-4 py-20 sm:px-6">
         <ErrorState
           {...describeError(error)}
           upstream={
@@ -51,7 +55,7 @@ export function AgentDetailView({ id }: { id: string }) {
             void agentQuery.refetch();
           }}
         />
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center">
           <Link
             href="/discover"
             className="text-xs text-ink-muted transition-colors hover:text-ink"
@@ -72,92 +76,142 @@ export function AgentDetailView({ id }: { id: string }) {
   const declaredActive = agent.profile.traitTags.includes('declared-active');
 
   return (
-    <div className="space-y-6">
-      <Link
-        href="/discover"
-        className="inline-flex items-center gap-1.5 text-xs text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft className="size-3.5" aria-hidden="true" />
-        All agents
-      </Link>
-
+    <div>
       {/* ------------------------------- header ------------------------------- */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <AgentAvatar
-          agentId={agent.identity.id}
-          name={agent.profile.name}
-          size="xl"
-          className="sm:size-20"
+      {/*
+       * Full-bleed, with the harbour light behind it. The profile is where an agent
+       * stops being a row in an index and becomes a specific thing you are deciding
+       * about, so it gets an entrance the grid does not.
+       */}
+      <section className="relative isolate overflow-hidden border-b border-line">
+        <div
+          className="fog pointer-events-none absolute inset-0 opacity-60"
+          aria-hidden="true"
+        />
+        <div
+          className="grid-field pointer-events-none absolute inset-0 opacity-20"
+          aria-hidden="true"
         />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {classified ? (
-              <Badge tone="amber">{CATEGORY_LABELS[primary.category]}</Badge>
-            ) : (
-              <Badge tone="outline">Unclassified</Badge>
-            )}
-            <Badge tone="neutral" mono>
-              {agent.profile.protocolTag}
-            </Badge>
-            <StatusDot
-              tone={declaredActive ? 'positive' : 'neutral'}
-              label={declaredActive ? 'Declared active' : 'Status not declared'}
+        <div className="relative mx-auto max-w-shell px-4 pt-8 pb-12 sm:px-6 lg:px-8 lg:pb-16">
+          <Link
+            href="/discover"
+            className="group inline-flex items-center gap-2 text-2xs tracking-[0.08em] text-ink-muted uppercase transition-colors hover:text-ink"
+          >
+            <ArrowLeft
+              className="size-3.5 transition-transform duration-300 ease-fjord group-hover:-translate-x-1"
+              aria-hidden="true"
             />
-          </div>
+            All agents
+          </Link>
 
-          <h1 className="mt-2.5 text-xl leading-tight font-semibold tracking-tight text-ink sm:text-2xl">
-            {agent.profile.name}
-          </h1>
+          <div className="mt-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-7">
+            <AgentAvatar
+              agentId={agent.identity.id}
+              name={agent.profile.name}
+              size="xl"
+              className="shadow-cast"
+            />
 
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-secondary">
-            {agent.profile.description ?? 'This agent published no description.'}
-          </p>
+            <div className="min-w-0 flex-1">
+              {/* Category as an eyebrow above the name, the way a title page is set. */}
+              <p className="eyebrow text-amber/80">
+                {classified ? CATEGORY_LABELS[primary.category] : 'Unclassified'}
+              </p>
 
-          {metadataMissing ? (
-            <p
-              role="status"
-              className="mt-3 max-w-3xl rounded-control border border-caution/30 bg-caution-wash/15 px-3 py-2 text-xs leading-5 text-caution"
-            >
-              This agent’s off-chain registration file could not be resolved, so its capabilities
-              and description are unavailable. Its on-chain identity and ownership are still
-              verified.
-            </p>
-          ) : null}
+              {/*
+               * The agent's name at display scale. `break-words` because these are
+               * machine-generated identifiers that can run long without a space, and a
+               * name that overflows its container is worse than one that wraps.
+               */}
+              <h1 className="display mt-3 text-display-md break-words text-ink">
+                {agent.profile.name}
+              </h1>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <a
-              href={agentIdentityUrl(agent.identity.agentId)}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line bg-surface-raised px-2.5 text-xs font-medium text-ink-secondary transition-colors hover:bg-surface-overlay hover:text-ink"
-            >
-              Inspect on-chain
-              <ExternalLink className="size-3" aria-hidden="true" />
-            </a>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <StatusDot
+                  tone={declaredActive ? 'positive' : 'neutral'}
+                  label={declaredActive ? 'Declared active' : 'Status not declared'}
+                />
+                <span className="text-line-strong" aria-hidden="true">
+                  /
+                </span>
+                <Badge tone="neutral" mono>
+                  {agent.profile.protocolTag}
+                </Badge>
+                <span className="text-line-strong" aria-hidden="true">
+                  /
+                </span>
+                <span className="font-mono text-2xs text-ink-faint">
+                  #{agent.identity.agentId}
+                </span>
+              </div>
+
+              <p className="mt-6 max-w-reading text-sm leading-7 text-ink-secondary">
+                {agent.profile.description ?? 'This agent published no description.'}
+              </p>
+
+              {metadataMissing ? (
+                <p
+                  role="status"
+                  className="mt-5 max-w-reading rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-xs leading-6 text-caution"
+                >
+                  This agent’s off-chain registration file could not be resolved, so its
+                  capabilities and description are unavailable. Its on-chain identity and
+                  ownership are still verified.
+                </p>
+              ) : null}
+
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <a
+                  href={agentIdentityUrl(agent.identity.agentId)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="group inline-flex h-10 items-center gap-2 rounded-control border border-line-strong bg-surface-overlay/70 px-4 text-xs font-medium text-ink transition-colors duration-200 hover:bg-surface-hover"
+                >
+                  Inspect on-chain
+                  <ExternalLink
+                    className="size-3 text-ink-faint transition-colors group-hover:text-amber"
+                    aria-hidden="true"
+                  />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
-      </header>
+      </section>
 
       {/* -------------------------------- body -------------------------------- */}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
-        <div className="min-w-0 space-y-3">
-          <AgentReputationPanel
-            agent={agent}
-            live={reputationQuery.data ?? null}
-            isLoading={reputationQuery.isLoading}
-          />
+      {/*
+       * No scroll reveals below this point, deliberately. Everything here is evidence
+       * feeding a decision about money, and staging it behind an entrance animation
+       * would delay exactly the content the page exists to show. Motion earns its place
+       * on the landing page, where the user is reading; not here, where they are
+       * checking.
+       */}
+      <div className="mx-auto max-w-shell px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+          <div className="min-w-0 space-y-4">
+            <AgentReputationPanel
+              agent={agent}
+              live={reputationQuery.data ?? null}
+              isLoading={reputationQuery.isLoading}
+            />
 
-          <ClassificationEvidence categories={agent.categories} />
+            <ClassificationEvidence categories={agent.categories} />
 
-          <CapabilityPanel capabilities={agent.profile.capabilities} traits={agent.profile.traitTags} />
+            <CapabilityPanel
+              capabilities={agent.profile.capabilities}
+              traits={agent.profile.traitTags}
+            />
 
-          <OnChainIdentity agent={agent} />
-        </div>
+            <OnChainIdentity agent={agent} />
+          </div>
 
-        {/* Hiring is the page's destination, so it stays visible while scrolling. */}
-        <div className="lg:sticky lg:top-20">
-          <HiringPanel agentName={agent.profile.name} />
+          {/* Hiring is the page's destination, so it stays visible while scrolling. */}
+          <div className="lg:sticky lg:top-20">
+            <HiringPanel agentName={agent.profile.name} />
+          </div>
         </div>
       </div>
     </div>
