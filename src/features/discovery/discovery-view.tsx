@@ -14,7 +14,9 @@ import { ApiError, describeError } from '../../lib/api/errors';
 import { isMockMode } from '../../config/env';
 import { formatCount } from '../../lib/utils/format';
 import { AgentFilters } from './agent-filters';
-import { useAgents, useCategories } from './use-agents';
+import { shouldInterpret } from './reads-as-request';
+import { SearchInterpretationPanel } from './search-interpretation';
+import { useAgents, useCategories, useSearch } from './use-agents';
 import { useDebouncedValue } from './use-debounced-value';
 import { useDiscoveryParams } from './use-discovery-params';
 
@@ -66,8 +68,25 @@ export function DiscoveryView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
 
-  const meta = agentsQuery.data?.meta;
-  const agents = agentsQuery.data?.data ?? [];
+  /*
+   * Two search paths, chosen by how the query reads. A sentence goes to the intent
+   * parser, because a substring match against "conservative yield agent with a track
+   * record" returns nothing; a keyword stays on the substring match, because intent
+   * parsing would only reinterpret a word the user already chose deliberately.
+   *
+   * Any explicit filter switches back to the list endpoint. The interpreter derives its
+   * own category and protocol, so letting both run at once would mean silently
+   * overriding a choice the user made by hand.
+   */
+  const asking = shouldInterpret(state);
+
+  const searchQuery = useSearch(state.q, state.page, asking);
+
+  // The two endpoints return the same envelope, so downstream rendering is unaware.
+  const active = asking ? searchQuery : agentsQuery;
+  const meta = active.data?.meta;
+  const agents = active.data?.data ?? [];
+  const interpretation = asking ? searchQuery.data?.meta.interpretation : undefined;
 
   return (
     <div className="space-y-6">
@@ -99,7 +118,13 @@ export function DiscoveryView() {
           onChange={(event) => {
             setDraft(event.target.value);
           }}
-          placeholder="Search by name, capability or what you need done"
+          /*
+           * Phrased as an invitation to describe a need, because that is now genuinely
+           * supported. Until intent search was wired up this placeholder promised
+           * something the substring match could not deliver — "what you need done"
+           * against a description index returns nothing for a sentence.
+           */
+          placeholder="Describe what you need done, or search by name"
           aria-label="Search agents"
           className="h-13 w-full rounded-card border border-line bg-surface-inset pr-11 pl-11 text-sm text-ink transition-[background-color,border-color] duration-300 ease-fjord placeholder:text-ink-faint focus:border-amber-dim/60 focus:bg-surface-raised focus:outline-none sm:text-base"
         />
@@ -117,6 +142,18 @@ export function DiscoveryView() {
         ) : null}
       </div>
 
+      {/*
+       * Shown above the filters, because it explains the results the user is about to
+       * scroll past and offers to become those filters.
+       */}
+      {interpretation ? (
+        <SearchInterpretationPanel
+          interpretation={interpretation}
+          total={meta?.total}
+          onApply={update}
+        />
+      ) : null}
+
       <AgentFilters
         state={state}
         categories={categoriesQuery.data?.data}
@@ -133,24 +170,24 @@ export function DiscoveryView() {
       {/* ------------------------------- results ------------------------------ */}
       <div className="flex min-h-5 items-center justify-end">
         {/* Distinguishes a background refetch from a first load. */}
-        {agentsQuery.isFetching && !agentsQuery.isLoading ? (
+        {active.isFetching && !active.isLoading ? (
           <InlineSpinner label="Updating" />
         ) : null}
       </div>
 
-      {agentsQuery.isLoading ? (
+      {active.isLoading ? (
         <AgentGridSkeleton count={9} />
-      ) : agentsQuery.isError ? (
+      ) : active.isError ? (
         <ErrorState
-          {...describeError(agentsQuery.error)}
+          {...describeError(active.error)}
           upstream={
-            agentsQuery.error instanceof ApiError &&
-            (agentsQuery.error.code === 'UPSTREAM_UNAVAILABLE' ||
-              agentsQuery.error.code === 'NETWORK_ERROR')
+            active.error instanceof ApiError &&
+            (active.error.code === 'UPSTREAM_UNAVAILABLE' ||
+              active.error.code === 'NETWORK_ERROR')
           }
-          requestId={agentsQuery.error instanceof ApiError ? agentsQuery.error.requestId : null}
+          requestId={active.error instanceof ApiError ? active.error.requestId : null}
           onRetry={() => {
-            void agentsQuery.refetch();
+            void active.refetch();
           }}
         />
       ) : agents.length === 0 ? (

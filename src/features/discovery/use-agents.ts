@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api/client';
 import type { ListAgentsParams } from '../../lib/api/contract';
+import { PER_PAGE } from './use-discovery-params';
 
 /**
  * Query hooks for discovery.
@@ -19,6 +20,7 @@ export const agentKeys = {
   reputation: (id: string) => ['agents', 'reputation', id] as const,
   categories: () => ['categories'] as const,
   stats: () => ['stats'] as const,
+  search: (query: string, page: number) => ['agents', 'search', query, page] as const,
 };
 
 export function useAgents(params: ListAgentsParams) {
@@ -60,6 +62,27 @@ export function useStats() {
     queryKey: agentKeys.stats(),
     queryFn: ({ signal }) => api.getStats(signal),
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Natural-language search.
+ *
+ * Distinct from {@link useAgents} in what it accepts: a request in words rather than a
+ * set of filters. The backend derives the structured query from it and returns both the
+ * matching agents and its own account of how it read the sentence, which is what makes
+ * this usable rather than a black box.
+ *
+ * `enabled` is the caller's decision, because a keyword like "rebalance" is better
+ * served by a plain substring match than by intent parsing.
+ */
+export function useSearch(query: string, page: number, enabled: boolean) {
+  return useQuery({
+    queryKey: agentKeys.search(query, page),
+    queryFn: ({ signal }) => api.search(query, page, PER_PAGE, signal),
+    enabled: enabled && query.trim().length > 0,
+    // Same reasoning as the list: do not collapse the grid while re-reading a query.
+    placeholderData: (previous) => previous,
   });
 }
 
