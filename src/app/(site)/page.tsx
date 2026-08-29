@@ -203,8 +203,9 @@ export default function HomePage() {
                 </h2>
               </div>
               <p className="max-w-sm text-xs leading-6 text-ink-muted">
-                Counted from KATTEGAT&rsquo;s own index. No performance, volume or success-rate
-                figures appear here — ERC-8004 exposes none, and we will not invent them.
+                Counted from KATTEGAT&rsquo;s own index, so every figure is a floor rather than
+                an ecosystem total. No performance, volume or success-rate numbers appear here —
+                ERC-8004 exposes none, and we will not invent them.
               </p>
             </div>
           </Reveal>

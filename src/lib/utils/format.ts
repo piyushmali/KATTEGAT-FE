@@ -15,6 +15,12 @@
 
 const COUNT = new Intl.NumberFormat('en-US');
 
+/** Up to one decimal, none forced — so `100` stays `100` and `87.5` keeps its half. */
+const SCORE = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+});
+
 const DATE = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
   month: 'short',
@@ -25,6 +31,19 @@ const DATE = new Intl.DateTimeFormat('en-US', {
 /** Group-separated integer, e.g. `18,766`. */
 export function formatCount(value: number): string {
   return COUNT.format(value);
+}
+
+/**
+ * An ERC-8004 feedback score, on the 0–100 scale the standard defines.
+ *
+ * Shown to at most one decimal, and a trailing `.0` is dropped: a mean of two perfect
+ * ratings should read `100`, not `100.0`, while a genuine `87.5` keeps its precision.
+ *
+ * This replaced a `toFixed(2)` that rendered a real value of 100 as "100.00" beside a
+ * hardcoded "/ 5" — a correct number reported against a scale ERC-8004 never defines.
+ */
+export function formatScore(value: number): string {
+  return SCORE.format(value);
 }
 
 /**

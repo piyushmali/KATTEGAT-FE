@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatDate } from './format';
+import { formatCount, formatDate, formatScore } from './format';
 
 /**
  * These exist to catch a locale regression, which is the failure mode that made the
@@ -39,5 +39,32 @@ describe('formatDate', () => {
     expect(formatDate(undefined)).toBeNull();
     expect(formatDate('')).toBeNull();
     expect(formatDate('not a date')).toBeNull();
+  });
+});
+
+describe('formatScore', () => {
+  /*
+   * Scores are 0–100 per ERC-8004. This replaced a `toFixed(2)` that rendered a real
+   * value of 100 as "100.00" next to a hardcoded "/ 5".
+   */
+  it('drops a trailing zero so a perfect score reads as a whole number', () => {
+    expect(formatScore(100)).toBe('100');
+    expect(formatScore(85)).toBe('85');
+  });
+
+  it('keeps a genuine fraction to one decimal', () => {
+    expect(formatScore(92.4)).toBe('92.4');
+    expect(formatScore(77.6)).toBe('77.6');
+  });
+
+  it('rounds beyond one decimal rather than implying false precision', () => {
+    // A mean of three integer scores can run long; 87.666… is not 87.67 of anything.
+    expect(formatScore(87.666666)).toBe('87.7');
+  });
+
+  it('renders a genuine zero as a zero, not as nothing', () => {
+    // A client rating an agent 0 is evidence. Only `null` means no evidence, and that
+    // never reaches this function.
+    expect(formatScore(0)).toBe('0');
   });
 });

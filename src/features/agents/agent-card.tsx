@@ -3,6 +3,7 @@ import { ArrowUpRight, ShieldQuestion } from 'lucide-react';
 import { AgentAvatar } from '../../components/ui/agent-avatar';
 import { Badge, StatusDot } from '../../components/ui/badge';
 import { CATEGORY_LABELS, type Agent, type AgentCategoryAssignment } from '../../lib/api/contract';
+import { formatScore } from '../../lib/utils/format';
 import { truncateAddress } from '../../lib/web3/chain';
 
 /**
@@ -189,9 +190,12 @@ export function AgentCard({ agent }: { agent: Agent }) {
         <div className="min-w-0">
           {score !== null ? (
             <div className="flex items-baseline gap-1.5">
-              <span className="display tabular text-xl text-ink">{score.toFixed(2)}</span>
+              {/* 0–100, per ERC-8004. The unit is stated so the figure cannot be
+                  mistaken for a five-star rating at a glance. */}
+              <span className="display tabular text-xl text-ink">{formatScore(score)}</span>
               <span className="text-3xs text-ink-faint">
-                {feedbackCount} {feedbackCount === 1 ? 'review' : 'reviews'}
+                <span className="text-line-strong">/100</span> · {feedbackCount}{' '}
+                {feedbackCount === 1 ? 'review' : 'reviews'}
                 {clientCount > 0 ? ` · ${String(clientCount)} clients` : ''}
               </span>
             </div>

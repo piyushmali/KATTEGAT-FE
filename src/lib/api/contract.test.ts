@@ -166,7 +166,14 @@ describe('mock fixtures', () => {
     const parsed = reputationResponseSchema.parse(mockReputation('56:900001'));
 
     expect(parsed.data.agentId).toBe('56:900001');
-    expect(parsed.data.score).toBeCloseTo(4.62, 6);
+    expect(parsed.data.score).toBeCloseTo(92.4, 6);
+    /*
+     * On ERC-8004's 0–100 scale. The fixtures previously modelled a 0–5 star scale, which
+     * is where the invented "/ 5" in the UI came from — a fixture that lies about its
+     * units teaches every test and component built on it to lie too.
+     */
+    expect(parsed.data.score).toBeLessThanOrEqual(100);
+    expect(parsed.data.score).toBeGreaterThanOrEqual(0);
     // A fixture is not a registry read, and must not label itself as one.
     expect(parsed.data.origin).toBe('snapshot');
     expect(parsed.data.notes.join(' ')).toContain('Mock');
@@ -184,6 +191,28 @@ describe('mock fixtures', () => {
     expect(parsed.meta.interpretation.explanation.length).toBeGreaterThan(0);
     for (const agent of parsed.data) {
       expect(agent.categories.map((c) => c.category)).toContain('yield-optimization');
+    }
+  });
+});
+
+describe('every fixture score stays on the scale ERC-8004 defines', () => {
+  /**
+   * A blanket guard, because the invented "/ 5" in the UI originated in these fixtures.
+   * A fixture that lies about its units teaches every test and component built on it to
+   * lie too, and it does so silently — nothing here failed while the scale was wrong.
+   */
+  it('holds for all mock agents with reputation', () => {
+    const { data } = listAgentsResponseSchema.parse(mockListAgents({ perPage: 100 }));
+    const scored = data.filter((agent) => agent.reputation?.score != null);
+
+    // Guards the guard: if the fixtures ever stop carrying scores, this must not pass by
+    // vacuously checking nothing.
+    expect(scored.length).toBeGreaterThan(0);
+
+    for (const agent of scored) {
+      const score = agent.reputation?.score;
+      expect(score, `${agent.identity.id} score`).toBeGreaterThanOrEqual(0);
+      expect(score, `${agent.identity.id} score`).toBeLessThanOrEqual(100);
     }
   });
 });
