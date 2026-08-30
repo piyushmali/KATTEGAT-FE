@@ -27,25 +27,19 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 bg-gradient-to-b from-void via-void/85 to-void/0 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-shell items-center gap-6 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="group flex min-w-0 items-center gap-3">
+        {/*
+         * Wordmark only. A tagline under the logo is a landing-page device, and repeating
+         * the positioning statement in the chrome of every page — including the ones where
+         * the user is working — makes the header look like an advert for the product they
+         * are already inside.
+         */}
+        <Link href="/" className="group flex shrink-0 items-center gap-2.5">
           <KattegatMark />
-          <span className="flex min-w-0 flex-col leading-none">
-            {/*
-             * The wordmark carries the display serif, which is what ties the brand to
-             * the type system rather than leaving the logo as an unrelated artefact.
-             * Tracked out wide, because a high-contrast serif at small size needs the
-             * air to stay legible.
-             */}
-            <span className="display text-[0.9375rem] tracking-[0.22em] text-ink">KATTEGAT</span>
-            {/* The descriptor is the positioning; it earns its space on desktop only. */}
-            <span className="mt-1 hidden text-3xs tracking-[0.1em] text-ink-faint lg:inline">
-              the harbour for intelligent agents
-            </span>
-          </span>
+          <span className="display text-[0.9375rem] tracking-[0.2em] text-ink">KATTEGAT</span>
         </Link>
 
         {/* Hairline divider rather than a gap, so the two zones read as deliberate. */}
-        <span className="hidden h-5 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
+        <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
 
         <nav aria-label="Main" className="flex items-center gap-1">
           {NAV.map((item) => {

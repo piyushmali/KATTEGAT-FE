@@ -23,7 +23,11 @@ const SIGNAL_KINDS: Record<string, { label: string; tone: 'amber' | 'info' | 'ne
   excluded: { label: 'Counter-signal', tone: 'neutral' },
 };
 
-function describeSignal(signal: string): { kind: string; value: string; tone: 'amber' | 'info' | 'neutral' } {
+function describeSignal(signal: string): {
+  kind: string;
+  value: string;
+  tone: 'amber' | 'info' | 'neutral';
+} {
   const [rawKind, ...rest] = signal.split(':');
   const meta = SIGNAL_KINDS[rawKind ?? ''];
   return {
@@ -33,11 +37,7 @@ function describeSignal(signal: string): { kind: string; value: string; tone: 'a
   };
 }
 
-export function ClassificationEvidence({
-  categories,
-}: {
-  categories: AgentCategoryAssignment[];
-}) {
+export function ClassificationEvidence({ categories }: { categories: AgentCategoryAssignment[] }) {
   const unclassified =
     categories.length === 0 || categories.every((entry) => entry.category === 'uncategorized');
 
@@ -55,10 +55,10 @@ export function ClassificationEvidence({
             <div>
               <p className="display text-lg text-ink">Not confidently classified</p>
               <p className="mt-2 max-w-lg text-xs leading-6 text-ink-muted">
-                This agent’s declared capabilities and description did not match any category in
-                the KATTEGAT taxonomy strongly enough to assign one. It is listed as unclassified
-                rather than forced into the nearest bucket — a wrong category is worse than none,
-                because you cannot tell it is wrong.
+                This agent’s declared capabilities and description did not match any category in the
+                KATTEGAT taxonomy strongly enough to assign one. It is listed as unclassified rather
+                than forced into the nearest bucket. A wrong category is worse than none, because
+                you cannot tell it is wrong.
               </p>
               <p className="mt-2 font-mono text-3xs text-ink-faint">
                 {categories[0]?.signals.join(', ') ?? 'no-signal-match'} ·{' '}
@@ -74,9 +74,7 @@ export function ClassificationEvidence({
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
                   <ScanSearch
-                    className={
-                      assignment.isPrimary ? 'size-4 text-amber' : 'size-4 text-ink-faint'
-                    }
+                    className={assignment.isPrimary ? 'size-4 text-amber' : 'size-4 text-ink-faint'}
                     aria-hidden="true"
                   />
                   <span className="display text-base text-ink">
@@ -91,10 +89,7 @@ export function ClassificationEvidence({
 
                 {/* Confidence as a bar plus a number: shape first, precision second. */}
                 <div className="flex items-center gap-2">
-                  <div
-                    className="h-px w-24 overflow-hidden bg-line-strong"
-                    role="presentation"
-                  >
+                  <div className="h-px w-24 overflow-hidden bg-line-strong" role="presentation">
                     {/*
                      * A drawn rule rather than a progress pill. Confidence is a
                      * measurement, and a hairline of exact length reads as an instrument
@@ -127,7 +122,7 @@ export function ClassificationEvidence({
 
               <p className="mt-2.5 text-3xs text-ink-faint">
                 Matched deterministically by ruleset{' '}
-                <span className="font-mono">{assignment.classifierVersion}</span> — the same input
+                <span className="font-mono">{assignment.classifierVersion}</span>. The same input
                 always produces the same result.
               </p>
             </li>

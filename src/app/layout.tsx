@@ -15,7 +15,11 @@ import '../styles/globals.css';
 
 // Self-hosted by Next at build time; no runtime request to Google.
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans', display: 'swap' });
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', display: 'swap' });
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+  display: 'swap',
+});
 
 /**
  * The display voice, used for monumental headlines and nothing else.
@@ -39,7 +43,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: {
     // Used verbatim for the landing page, which sets no title of its own.
-    default: 'KATTEGAT — the harbour for intelligent agents',
+    default: 'KATTEGAT · The harbour for intelligent agents',
     template: '%s · KATTEGAT',
   },
   description:

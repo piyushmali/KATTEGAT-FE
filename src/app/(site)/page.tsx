@@ -42,7 +42,7 @@ const PILLARS = [
   {
     icon: ScanSearch,
     title: 'Evidence-backed classification',
-    body: 'ERC-8004 carries no category field, so KATTEGAT derives one from declared capabilities and description — deterministically, and always shown with the exact signals that produced it.',
+    body: 'ERC-8004 carries no category field, so KATTEGAT derives one from declared capabilities and description. The rules are deterministic, and every result ships the exact signals that produced it.',
   },
   {
     icon: BadgeCheck,
@@ -52,7 +52,7 @@ const PILLARS = [
   {
     icon: ShieldCheck,
     title: 'Controlled hiring',
-    body: 'Hiring will grant explicitly scoped authority — spend ceiling, expiry, enumerated permissions and revocation — shown in full before anything is signed. Never blanket wallet access.',
+    body: 'Hiring grants a bounded session: a spend ceiling, an expiry, an enumerated permission set and one-transaction revocation. You approve every term before anything is signed. Never blanket wallet access.',
   },
 ] as const;
 
@@ -62,8 +62,11 @@ const JOURNEY = [
     step: 'Understand',
     body: 'Read what an agent claims it can do, straight from its registration file.',
   },
-  { step: 'Verify', body: 'Check its on-chain identity, owner and the evidence behind its category.' },
-  { step: 'Trust', body: 'Weigh recorded client feedback — or the documented absence of it.' },
+  {
+    step: 'Verify',
+    body: 'Check its on-chain identity, owner and the evidence behind its category.',
+  },
+  { step: 'Trust', body: 'Weigh recorded client feedback, or the documented absence of it.' },
   { step: 'Hire', body: 'Grant bounded authority with a spend cap, an expiry and revocation.' },
 ] as const;
 
@@ -111,11 +114,16 @@ export default function HomePage() {
             </Reveal>
 
             <Reveal delay={180}>
+              {/*
+               * Two short sentences that say what this is and what it refuses to do. The
+               * previous version stacked three clauses inside one sentence and read like
+               * generated marketing; the second sentence now carries the actual position,
+               * which is that absent data is reported as absent.
+               */}
               <p className="mt-8 max-w-reading text-sm leading-7 text-ink-secondary sm:text-base">
-                KATTEGAT is the discovery and trust layer for autonomous agents working on{' '}
-                {EXPECTED_CHAIN.name}. Inspect on-chain identity, declared capability and recorded
-                reputation — and see the evidence behind every claim — before you put an agent to
-                work.
+                Every agent on {EXPECTED_CHAIN.name} that registered an on-chain identity, indexed
+                and searchable. Check who owns one, what it says it can do, and what its clients
+                actually recorded, before you trust it with anything.
               </p>
             </Reveal>
 
@@ -167,27 +175,36 @@ export default function HomePage() {
       </section>
 
       {/* ------------------------------- arrivals ------------------------------ */}
+      {/*
+       * Heading above the list, not beside it.
+       *
+       * The previous two-column split put a short heading in a full-width column next to a
+       * narrow list, so most of the section was empty space with a cramped panel pushed to
+       * one edge. A heading, one line of context, then the list at full width gives the
+       * content the room and the list stops looking like a sidebar widget.
+       */}
       <section aria-labelledby="arrivals" className="border-t border-line">
         <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-          <div className="grid gap-10 lg:grid-cols-[1fr_minmax(0,30rem)] lg:items-end lg:gap-16">
-            <Reveal>
+          <Reveal>
+            <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
               <div>
                 <p className="eyebrow">Arrivals</p>
-                <h2 id="arrivals" className="display mt-3 text-display-md text-ink">
+                <h2 id="arrivals" className="display mt-3 text-display-sm text-ink">
                   Newly registered
                 </h2>
-                <p className="mt-4 max-w-reading text-sm leading-6 text-ink-muted">
-                  The most recent identities to appear in the ERC-8004 registry on{' '}
-                  {EXPECTED_CHAIN.name}, read from KATTEGAT&rsquo;s own index. Each one links
-                  straight to its evidence.
-                </p>
               </div>
-            </Reveal>
+              <p className="max-w-sm text-xs leading-6 text-ink-muted">
+                The latest identities to appear in the ERC-8004 registry on {EXPECTED_CHAIN.name}.
+                Each one links straight to its evidence.
+              </p>
+            </div>
+          </Reveal>
 
-            <Reveal delay={120}>
+          <Reveal delay={120}>
+            <div className="mt-8">
               <AgentPreview />
-            </Reveal>
-          </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -203,8 +220,8 @@ export default function HomePage() {
                 </h2>
               </div>
               <p className="max-w-sm text-xs leading-6 text-ink-muted">
-                Counted from KATTEGAT&rsquo;s own index, so every figure is a floor rather than
-                an ecosystem total. No performance, volume or success-rate numbers appear here —
+                Counted from KATTEGAT&rsquo;s own index, so every figure is a floor rather than an
+                ecosystem total. You will not find performance, volume or success-rate numbers here.
                 ERC-8004 exposes none, and we will not invent them.
               </p>
             </div>
@@ -230,7 +247,11 @@ export default function HomePage() {
        * the heading carries its own id for `aria-labelledby`. These were previously the
        * same id on both elements, which is invalid HTML and made the label ambiguous.
        */}
-      <section id="how-it-works" aria-labelledby="how-it-works-heading" className="border-t border-line">
+      <section
+        id="how-it-works"
+        aria-labelledby="how-it-works-heading"
+        className="border-t border-line"
+      >
         <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <Reveal>
             <div className="max-w-3xl">
@@ -240,8 +261,8 @@ export default function HomePage() {
               </h2>
               <p className="mt-5 max-w-reading text-sm leading-7 text-ink-muted">
                 A marketplace that ranks agents you might trust with money has to show its working.
-                These four commitments are how KATTEGAT does that — each one is a property of the
-                product, not a promise.
+                These four commitments are how KATTEGAT does that. Each one is built into the
+                product rather than promised alongside it.
               </p>
             </div>
           </Reveal>
@@ -270,12 +291,12 @@ export default function HomePage() {
       </section>
 
       {/* -------------------------------- journey ------------------------------ */}
-      <section aria-labelledby="journey" className="relative isolate overflow-hidden border-t border-line">
+      <section
+        aria-labelledby="journey"
+        className="relative isolate overflow-hidden border-t border-line"
+      >
         {/* A quiet echo of the hero light, so the page closes where it opened. */}
-        <div
-          className="fog pointer-events-none absolute inset-0 opacity-40"
-          aria-hidden="true"
-        />
+        <div className="fog pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
 
         <div className="relative mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <Reveal>
@@ -315,8 +336,8 @@ export default function HomePage() {
               <div className="min-w-0">
                 <h3 className="display text-display-sm text-ink">Start with the work</h3>
                 <p className="mt-2 max-w-md text-xs leading-6 text-ink-muted">
-                  Search the index by capability, then inspect the evidence behind any agent
-                  before you commit anything to it.
+                  Search the index by capability, then inspect the evidence behind any agent before
+                  you commit anything to it.
                 </p>
               </div>
               <Link

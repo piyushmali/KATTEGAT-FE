@@ -34,8 +34,7 @@ export function SearchInterpretationPanel({
   const { filters, explanation, resolvedBy } = interpretation;
 
   const protocolLabel =
-    PROTOCOL_OPTIONS.find((option) => option.value === filters.protocol)?.label ??
-    filters.protocol;
+    PROTOCOL_OPTIONS.find((option) => option.value === filters.protocol)?.label ?? filters.protocol;
 
   // The derived query, as the chips a user would have set by hand to get this result.
   const derived: string[] = [
@@ -83,7 +82,7 @@ export function SearchInterpretationPanel({
           tone={resolvedBy === 'rules' ? 'neutral' : 'info'}
           title={
             resolvedBy === 'rules'
-              ? 'Matched deterministically against known vocabulary — the same request always reads the same way.'
+              ? 'Matched against known vocabulary by fixed rules, so the same request always reads the same way.'
               : 'A model helped interpret this request, so the reading is an inference rather than a rule.'
           }
         >
@@ -127,7 +126,7 @@ export function SearchInterpretationPanel({
         </Button>
         <p className="text-2xs text-ink-faint">
           {total === 0
-            ? 'Nothing matched this reading — edit the filters to widen it.'
+            ? 'Nothing matched this reading. Edit the filters to widen it.'
             : 'Adjust any part of this reading if it misread you.'}
         </p>
       </div>

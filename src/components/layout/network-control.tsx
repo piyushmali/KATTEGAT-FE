@@ -14,7 +14,7 @@ import {
 import { AlertTriangle, LogOut, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils/cn';
-import { EXPECTED_CHAIN, EXPECTED_CHAIN_ID, truncateAddress } from '../../lib/web3/chain';
+import { EXPECTED_CHAIN_ID, truncateAddress } from '../../lib/web3/chain';
 
 /**
  * Network and wallet state, as one control.
@@ -101,20 +101,21 @@ export function NetworkControl() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Network readout. Hidden on the narrowest screens where the wallet matters more. */}
-      <div className="hidden items-center gap-2 rounded-control border border-line bg-surface-raised px-2.5 py-1.5 sm:flex">
-        <span
-          className={
-            wrongNetwork
-              ? 'size-1.5 shrink-0 rounded-pill bg-caution'
-              : 'size-1.5 shrink-0 rounded-pill bg-positive'
-          }
-          aria-hidden="true"
-        />
-        <span className="text-2xs font-medium text-ink-secondary">
-          {wrongNetwork ? 'Wrong network' : EXPECTED_CHAIN.name}
-        </span>
-      </div>
+      {/*
+       * The network is only mentioned when it is a problem.
+       *
+       * A permanent "BNB Smart Chain" chip was pure noise: the whole product is BNB-only,
+       * it says so in the hero and the footer, and a status indicator that never changes
+       * teaches people to stop reading it. Now the chip appears exactly when it carries
+       * information the user has to act on, which is also when the "Switch" button next to
+       * it becomes relevant.
+       */}
+      {wrongNetwork ? (
+        <div className="hidden items-center gap-2 rounded-control border border-caution/30 bg-caution-wash/15 px-2.5 py-1.5 sm:flex">
+          <span className="size-1.5 shrink-0 rounded-pill bg-caution" aria-hidden="true" />
+          <span className="text-2xs font-medium text-caution">Wrong network</span>
+        </div>
+      ) : null}
 
       {isConnected ? (
         <>
@@ -148,7 +149,7 @@ export function NetworkControl() {
               disconnect();
             }}
             title={
-              connector ? `${connector.name} · ${address ?? ''} — click to disconnect` : address
+              connector ? `${connector.name} · ${address ?? ''} (click to disconnect)` : address
             }
             aria-label={`Disconnect ${connector?.name ?? 'wallet'} ${address ?? ''}`}
             className="group"

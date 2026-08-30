@@ -10,7 +10,7 @@ export default function NotFound() {
       <p className="eyebrow mt-6">404</p>
       <h1 className="display mt-3 text-display-sm text-ink">Not in the index</h1>
       <p className="mt-4 text-xs leading-6 text-ink-muted">
-        That page does not exist. If you were looking for an agent, it may not be indexed yet — the
+        That page does not exist. If you were looking for an agent, it may not be indexed yet. The
         catalogue grows as ingestion walks the registry.
       </p>
       <Link

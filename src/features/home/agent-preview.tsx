@@ -2,27 +2,37 @@
 
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { AgentImage } from '../../components/ui/agent-image';
 import { Skeleton } from '../../components/ui/states';
 import { CATEGORY_LABELS } from '../../lib/api/contract';
+import { formatDate } from '../../lib/utils/format';
 import { useAgents } from '../discovery/use-agents';
 
 /**
  * A live sample of the index, on the landing page.
  *
- * This replaces what would otherwise be an empty hero column, and it earns the space
- * by being real: these are the most recently registered agents, fetched from the same
- * endpoint discovery uses. It demonstrates the claim "KATTEGAT indexes a living
- * ecosystem" instead of asserting it over a decorative animation.
+ * It earns its space by being real: the most recently registered agents, from the same
+ * endpoint discovery uses. That demonstrates "KATTEGAT indexes a living ecosystem"
+ * rather than asserting it over a decorative animation.
  *
- * Classified agents are requested first so the sample shows the product working. It
- * degrades quietly — if the call fails the whole panel is omitted rather than showing
- * a broken frame on the first screen a visitor sees.
+ * LAYOUT
+ *
+ * A register, not a widget. The earlier version was a narrow bordered panel with its own
+ * header bar and a stack of cramped two-line rows, which read as a sidebar module that
+ * had wandered into the page. At full width the rows can hold their columns instead:
+ * artwork, name, what it does, category, when it arrived, all aligned down the page so
+ * the eye can scan one column at a time.
+ *
+ * The panel chrome is gone entirely. The section heading above it already says what this
+ * is, and a second header inside the box was saying it twice.
+ *
+ * Degrades quietly: if the call fails the whole block is omitted rather than putting a
+ * broken frame on the first screen a visitor sees.
  */
 export function AgentPreview() {
   const { data, isLoading, isError } = useAgents({
-    perPage: 5,
+    perPage: 6,
     sort: 'registered_at',
     direction: 'desc',
     resolvedOnly: true,
@@ -31,80 +41,69 @@ export function AgentPreview() {
   if (isError) return null;
 
   return (
-    <div className="lit-edge overflow-hidden rounded-panel border border-line bg-surface-raised">
-      <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <span
-            className="size-1.5 animate-live rounded-pill bg-positive ring-2 ring-positive/20"
-            aria-hidden="true"
-          />
-          <h2 className="eyebrow">Live from the registry</h2>
-        </div>
-        <Link
-          href="/discover"
-          className="group inline-flex items-center gap-1.5 text-2xs font-medium text-ink-muted transition-colors hover:text-amber"
-        >
-          Browse all
-          <ArrowRight
-            className="size-3 transition-transform duration-300 ease-fjord group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
-        </Link>
-      </div>
-
-      <ul className="divide-y divide-line">
+    <div>
+      <ul className="divide-y divide-line border-y border-line">
         {isLoading
-          ? Array.from({ length: 5 }, (_, index) => (
+          ? Array.from({ length: 6 }, (_, index) => (
               <li
                 key={index}
-                className="flex items-center gap-3.5 px-5 py-4"
+                className="flex items-center gap-4 py-4"
                 // Staggered to match the agent grid, so both lists load the same way.
                 style={{ '--skeleton-delay': `${String(index * 90)}ms` } as CSSProperties}
               >
-                <Skeleton className="size-8 rounded-sm" />
+                <Skeleton className="size-10 rounded-control" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="h-3 w-2/5" />
-                  <Skeleton className="h-2.5 w-3/5" />
+                  <Skeleton className="h-3.5 w-1/4" />
+                  <Skeleton className="h-2.5 w-2/5" />
                 </div>
+                <Skeleton className="hidden h-3 w-20 sm:block" />
               </li>
             ))
           : (data?.data ?? []).map((agent) => {
               const primary =
                 agent.categories.find((entry) => entry.isPrimary) ?? agent.categories[0];
               const classified = primary && primary.category !== 'uncategorized';
+              const registered = formatDate(agent.identity.registeredAt);
 
               return (
                 <li key={agent.identity.id}>
                   <Link
                     href={`/agents/${encodeURIComponent(agent.identity.id)}`}
-                    className="group flex items-center gap-3.5 px-5 py-4 transition-colors duration-300 hover:bg-surface-overlay/50"
+                    className="group flex items-center gap-4 py-4 transition-colors duration-300 hover:bg-surface-raised/40"
                   >
                     <AgentImage
                       agentId={agent.identity.id}
                       name={agent.profile.name}
                       imageUrl={agent.profile.imageUrl}
-                      size="sm"
+                      size="md"
+                      className="ml-0.5"
                     />
+
+                    {/*
+                     * Name and description share a column but not a line. Many projects
+                     * register hundreds of agents under one name, so the description is
+                     * what actually distinguishes two adjacent rows.
+                     */}
                     <div className="min-w-0 flex-1">
-                      {/* Serif name, matching the card — one agent, one treatment. */}
-                      <p className="display truncate text-sm text-ink transition-colors duration-300 group-hover:text-amber-bright">
+                      <p className="display truncate text-base text-ink transition-colors duration-300 group-hover:text-amber-bright">
                         {agent.profile.name}
                       </p>
-                      <p className="mt-1 truncate text-3xs text-ink-faint">
+                      <p className="mt-1 truncate text-xs text-ink-muted">
                         {agent.profile.description ?? 'No description published'}
                       </p>
                     </div>
-                    {classified ? (
-                      <span className="eyebrow hidden shrink-0 text-amber/70 sm:inline">
-                        {CATEGORY_LABELS[primary.category]}
-                      </span>
-                    ) : (
-                      <span className="hidden shrink-0 font-mono text-3xs text-ink-faint sm:inline">
-                        #{agent.identity.agentId}
-                      </span>
-                    )}
-                    <ArrowRight
-                      className="hidden size-3 shrink-0 text-line-strong transition-all duration-300 ease-fjord group-hover:translate-x-0.5 group-hover:text-amber sm:block"
+
+                    {/* Fixed-width so the column aligns rather than ragging by label. */}
+                    <span className="eyebrow hidden w-36 shrink-0 text-right text-amber/75 lg:block">
+                      {classified ? CATEGORY_LABELS[primary.category] : ''}
+                    </span>
+
+                    <span className="tabular hidden w-24 shrink-0 text-right text-2xs text-ink-faint sm:block">
+                      {registered ?? `#${String(agent.identity.agentId)}`}
+                    </span>
+
+                    <ArrowUpRight
+                      className="hidden size-3.5 shrink-0 text-line-strong transition-colors duration-300 group-hover:text-amber sm:block"
                       aria-hidden="true"
                     />
                   </Link>
@@ -112,6 +111,22 @@ export function AgentPreview() {
               );
             })}
       </ul>
+
+      <div className="mt-6">
+        <Link
+          href="/discover"
+          className="group inline-flex items-center gap-2 text-xs font-medium text-ink-secondary transition-colors hover:text-amber"
+        >
+          <span className="relative">
+            Browse all agents
+            <span
+              className="absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-amber-dim transition-transform duration-500 ease-fjord group-hover:scale-x-100"
+              aria-hidden="true"
+            />
+          </span>
+          <ArrowUpRight className="size-3.5" aria-hidden="true" />
+        </Link>
+      </div>
     </div>
   );
 }
