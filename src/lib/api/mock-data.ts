@@ -157,6 +157,22 @@ const MOCK_AGENTS: WireAgent[] = [
           kind: 'mcp',
           version: '1.2.0',
         },
+        {
+          /*
+           * A templated endpoint, resolved. A third of the live registry looks like this:
+           * the operator publishes one URL for their whole platform and the backend fills
+           * in the agent id. `value` keeps the template, `url` is where a click goes, and
+           * the UI must show the second or the link looks broken.
+           *
+           * `version` is deliberately not semver. Prefixing "v" unconditionally rendered
+           * "vaacp-platform-v1" on 10,890 endpoints.
+           */
+          label: 'Termix Platform',
+          value: 'https://tidewater.example/api/v1/agents/{agentId}/services',
+          url: 'https://tidewater.example/api/v1/agents/900002/services',
+          kind: 'web',
+          version: 'aacp-platform-v1',
+        },
       ],
       trust_models: ['reputation', 'crypto-economic'],
       x402_support: true,

@@ -429,6 +429,36 @@ describe('AgentInterface', () => {
     expect(screen.queryByRole('link', { name: new RegExp('eip155') })).toBeNull();
   });
 
+  it('shows where a templated endpoint actually goes, not the template', () => {
+    /*
+     * The bug this pins. A third of the registry publishes one URL per platform with an
+     * `{agentId}` placeholder. The backend resolves it, but the panel was rendering the
+     * published string as the link text, so the visible URL read `{agentId}` while the
+     * href pointed elsewhere and every one of those links looked broken.
+     */
+    renderFor('56:900002');
+
+    const link = screen.getByRole('link', { name: /agents\/900002\/services/ });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://tidewater.example/api/v1/agents/900002/services',
+    );
+    // The template must not be what the visitor reads.
+    expect(screen.queryByText(/\{agentId\}/)).toBeNull();
+    // But the substitution is disclosed rather than passed off as the published value.
+    expect(screen.getByTitle(/published as a template/i)).toBeInTheDocument();
+  });
+
+  it('does not prefix a version that is not a version number', () => {
+    // "aacp-platform-v1" is a platform name. `v` + that read "vaacp-platform-v1".
+    renderFor('56:900002');
+
+    expect(screen.getByText('aacp-platform-v1')).toBeInTheDocument();
+    expect(screen.queryByText('vaacp-platform-v1')).toBeNull();
+    // A real semver still gets the prefix.
+    expect(screen.getByText('v1.2.0')).toBeInTheDocument();
+  });
+
   it('counts only machine-callable interfaces, not contact details', () => {
     // Fjord Treasury Manager publishes an MCP server and a Telegram handle.
     renderFor('56:900005');

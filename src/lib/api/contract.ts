@@ -67,6 +67,48 @@ export const CATEGORY_LABELS: Record<AgentCategoryId, string> = {
   uncategorized: 'Unclassified',
 };
 
+/**
+ * The protocol tag as a phrase a visitor can act on.
+ *
+ * Lives beside `CATEGORY_LABELS` for the same reason: both turn a wire enum into display
+ * vocabulary, and both are needed in more than one place. The card and the profile header
+ * disagreed while this was a local helper in the card, so the same agent read "A2A
+ * endpoint" in the grid and `a2a` on its own page.
+ *
+ * The enum values leak implementation. `http-api` is punctuated for a database column, and
+ * `unconfigured` describes the record rather than the agent. Worse, it conflates two
+ * states: an agent whose registration file never resolved is also tagged `unconfigured`,
+ * and that is a gap in KATTEGAT's index rather than a fact about the agent, so the caller
+ * passes that in separately.
+ */
+export function describeInterface(protocolTag: string, metadataMissing: boolean): string {
+  if (metadataMissing) return 'Interface unknown';
+
+  switch (protocolTag) {
+    case 'a2a':
+      return 'A2A endpoint';
+    case 'mcp':
+      return 'MCP server';
+    case 'http-api':
+      return 'HTTP API';
+    case 'custom':
+      return 'Custom endpoint';
+    default:
+      return 'No endpoint';
+  }
+}
+
+/**
+ * Renders a service version the way the operator wrote it.
+ *
+ * A bare `0.3.0` reads better as `v0.3.0`, but prefixing unconditionally produced
+ * `vaacp-platform-v1` on 10,890 endpoints and `v2025-06-18` on 284 more, because those
+ * strings are a platform name and a date. Only dotted numerics get the prefix.
+ */
+export function formatServiceVersion(version: string): string {
+  return /^\d+(\.\d+)*$/.test(version) ? `v${version}` : version;
+}
+
 /** The launch four, which stay visible in the UI even at zero agents. */
 export const LAUNCH_CATEGORIES: readonly AgentCategoryId[] = [
   'rebalancing',
