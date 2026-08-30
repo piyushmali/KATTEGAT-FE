@@ -669,6 +669,8 @@ export function mockStats() {
       classified_agents: classified,
       feedback_records: feedback,
       rated_agents: rated,
+      // Every fixture agent has been swept, so the mock exercises the "whole catalogue" copy.
+      reputation_swept: MOCK_AGENTS.length,
       owner_count: new Set(MOCK_AGENTS.map((a) => a.identity.owner_address)).size,
       last_indexed_at: new Date().toISOString(),
     },

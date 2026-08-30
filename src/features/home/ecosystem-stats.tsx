@@ -112,38 +112,52 @@ export function HeroIndexStrip() {
 }
 
 /**
- * Feedback coverage — a measurement of KATTEGAT's index, not a claim about the chain.
+ * Feedback coverage, stated against the share of the catalogue it was measured over.
  *
- * The distinction is load-bearing and this component previously got it wrong. Reputation
- * is read from the registry lazily, when someone opens an agent's page, so this counter
- * reflects how much of the index has been *looked at* rather than how much feedback
- * exists on BNB Smart Chain. The earlier copy said "no on-chain feedback has been
- * recorded against any indexed agent", which read as a finding about the ecosystem while
- * really describing our own cache — and it was false: agents 56:1 through 56:3 each carry
- * real registry feedback that simply had not been read yet.
+ * The scope is load-bearing and this component has been wrong about it twice. It first said
+ * "no on-chain feedback has been recorded against any indexed agent", which read as a
+ * finding about the ecosystem while describing our own cache, and was false: agents 56:1
+ * through 56:3 each carry real registry feedback nobody had read. The fix at the time was to
+ * say "read so far", which was honest but useless, because reputation was only read when a
+ * visitor opened a profile and that came to 130 agents out of 317,476.
  *
- * So the scope is now stated in the sentence. Zero *read so far* is an honest
- * measurement; "none exists" was not ours to assert.
+ * A batch sweep now reads the whole catalogue, so the figure can finally be reported with
+ * its denominator. "412 of 317,476 agents swept carry feedback" is a finding. "412 agents
+ * read so far" was an apology.
  */
 export function FeedbackCoverage() {
   const { data, isLoading, isError } = useStats();
   if (isError || isLoading || !data) return null;
 
+  const swept = data.reputationSwept;
+  const share = data.indexedAgents > 0 ? Math.round((swept / data.indexedAgents) * 100) : 0;
+
   return (
     <p className="text-xs leading-6 text-ink-muted">
-      {data.feedbackRecords === 0 ? (
+      {swept === 0 ? (
         <>
-          No client feedback has been read into KATTEGAT&rsquo;s index yet. Reputation is fetched
-          from the registry when an agent&rsquo;s page is opened, so this counts what has been read,
-          not what exists on chain.
+          Reputation has not been read from the registry yet, so KATTEGAT cannot say how much
+          client feedback exists. This is a gap in the index, not a finding about the agents.
         </>
       ) : (
         <>
           <span className="tabular font-medium text-ink">{formatCount(data.feedbackRecords)}</span>{' '}
           feedback records across{' '}
           <span className="tabular font-medium text-ink">{formatCount(data.ratedAgents)}</span>{' '}
-          {data.ratedAgents === 1 ? 'agent' : 'agents'} read so far from the ERC-8004 reputation
-          registry. Coverage grows as agents are opened, so this is a floor rather than a total.
+          {data.ratedAgents === 1 ? 'agent' : 'agents'}, from{' '}
+          <span className="tabular font-medium text-ink">{formatCount(swept)}</span> read out of the
+          ERC-8004 reputation registry so far.{' '}
+          {share >= 99 ? (
+            <>
+              That is the whole catalogue, so an agent shown without feedback genuinely has none
+              recorded.
+            </>
+          ) : (
+            <>
+              The sweep has covered {share}% of indexed agents and continues, so an agent shown
+              without feedback may simply not have been reached yet.
+            </>
+          )}
         </>
       )}
     </p>

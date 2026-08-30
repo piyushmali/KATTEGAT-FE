@@ -429,6 +429,13 @@ export const ecosystemStatsSchema = z
     classified_agents: z.number(),
     feedback_records: z.number(),
     rated_agents: z.number(),
+    /**
+     * Agents whose reputation has been read from the registry.
+     *
+     * The denominator for the two figures above. Without it a client cannot tell "nobody has
+     * rated these agents" from "we have not looked yet", and those are different claims.
+     */
+    reputation_swept: z.number(),
     owner_count: z.number(),
     last_indexed_at: z.string().nullable(),
   })
@@ -440,6 +447,7 @@ export const ecosystemStatsSchema = z
     classifiedAgents: raw.classified_agents,
     feedbackRecords: raw.feedback_records,
     ratedAgents: raw.rated_agents,
+    reputationSwept: raw.reputation_swept,
     ownerCount: raw.owner_count,
     lastIndexedAt: raw.last_indexed_at,
   }));
