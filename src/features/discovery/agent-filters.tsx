@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, ChevronDown, ListFilter, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { InlineSpinner } from '../../components/ui/states';
 import { cn } from '../../lib/utils/cn';
 import { formatCount } from '../../lib/utils/format';
 import type { Category } from '../../lib/api/contract';
@@ -34,6 +35,8 @@ export interface AgentFiltersProps {
   state: DiscoveryState;
   categories: Category[] | undefined;
   totalForQuery: number | undefined;
+  /** A background refetch is in flight. Shown beside the count it is about to change. */
+  isRefetching?: boolean;
   hasFilters: boolean;
   onUpdate: (patch: Partial<DiscoveryState>) => void;
   onToggleTrait: (trait: string) => void;
@@ -44,6 +47,7 @@ export function AgentFilters({
   state,
   categories,
   totalForQuery,
+  isRefetching = false,
   hasFilters,
   onUpdate,
   onToggleTrait,
@@ -57,12 +61,15 @@ export function AgentFilters({
   const uncategorized = (categories ?? []).find((category) => category.id === 'uncategorized');
   const awaiting = (categories ?? []).filter(
     (category) =>
-      category.agentCount === 0 &&
-      (LAUNCH_CATEGORIES as readonly string[]).includes(category.id),
+      category.agentCount === 0 && (LAUNCH_CATEGORIES as readonly string[]).includes(category.id),
   );
 
-  const advancedCount =
-    (state.protocol ? 1 : 0) + state.traits.length + (state.resolvedOnly ? 1 : 0);
+  /*
+   * Counts only what the disclosure hides, so the badge matches what opening it reveals.
+   * Protocol is excluded now that it has its own visible row, and `resolvedOnly` counts
+   * when it is off, because on is the default.
+   */
+  const advancedCount = state.traits.length + (state.resolvedOnly ? 0 : 1);
 
   return (
     <div className="space-y-3">
@@ -130,6 +137,46 @@ export function AgentFilters({
         </p>
       ) : null}
 
+      {/* ---------------------------- interface axis --------------------------- */}
+      {/*
+       * Promoted out of the disclosure, because it is the second question a visitor has
+       * and it was two clicks deep.
+       *
+       * Roughly half the registry has a resolved registration file that declares no
+       * endpoint at all. Those entries are real and stay in the catalogue, but someone
+       * looking for an agent they can actually call had no visible way to say so, which
+       * made the grid feel like it was full of empty records with no recourse.
+       */}
+      <div
+        className="flex flex-wrap items-center gap-x-2 gap-y-1.5"
+        role="group"
+        aria-label="Filter by interface"
+      >
+        <span className="eyebrow mr-0.5 shrink-0">Interface</span>
+        <Chip
+          size="sm"
+          active={state.protocol === null}
+          onClick={() => {
+            onUpdate({ protocol: null });
+          }}
+        >
+          Any
+        </Chip>
+        {PROTOCOL_OPTIONS.map((option) => (
+          <Chip
+            key={option.value}
+            size="sm"
+            active={state.protocol === option.value}
+            muted={option.value === 'unconfigured'}
+            onClick={() => {
+              onUpdate({ protocol: state.protocol === option.value ? null : option.value });
+            }}
+          >
+            {option.label}
+          </Chip>
+        ))}
+      </div>
+
       {/* --------------------------- secondary filters ------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -163,6 +210,8 @@ export function AgentFilters({
         </div>
 
         <div className="flex items-center gap-3">
+          {isRefetching ? <InlineSpinner label="Updating" /> : null}
+
           {/*
            * The result count is the answer to whatever the user just did, so it is set
            * in the display face and given the figure prominence a headline number
@@ -206,32 +255,7 @@ export function AgentFilters({
 
       {advancedOpen ? (
         <div className="animate-rise space-y-4 rounded-card border border-line bg-surface-inset p-4">
-          <FilterGroup label="Protocol">
-            <Chip
-              active={state.protocol === null}
-              size="sm"
-              onClick={() => {
-                onUpdate({ protocol: null });
-              }}
-            >
-              Any
-            </Chip>
-            {PROTOCOL_OPTIONS.map((option) => (
-              <Chip
-                key={option.value}
-                size="sm"
-                active={state.protocol === option.value}
-                onClick={() => {
-                  onUpdate({
-                    protocol: state.protocol === option.value ? null : option.value,
-                  });
-                }}
-              >
-                {option.label}
-              </Chip>
-            ))}
-          </FilterGroup>
-
+          {/* Protocol lives in the always-visible row above, so it is not repeated here. */}
           <FilterGroup label="Declared traits">
             {TRAIT_OPTIONS.map((option) => (
               <Chip
@@ -250,17 +274,21 @@ export function AgentFilters({
             ))}
           </FilterGroup>
 
-          <FilterGroup label="Evidence">
+          {/*
+           * Phrased as an opt-in to see more, because complete records are the default.
+           * "Metadata resolved" described our pipeline; this describes what the user gets.
+           */}
+          <FilterGroup label="Record completeness">
             <Chip
               size="sm"
-              active={state.resolvedOnly}
-              title="Only agents whose off-chain registration file could be resolved"
+              active={!state.resolvedOnly}
+              title="Also show agents whose off-chain registration file has not resolved. These have a verified on-chain identity but no name, description or endpoint yet."
               onClick={() => {
-                onUpdate({ resolvedOnly: !state.resolvedOnly });
+                onUpdate({ resolvedOnly: state.resolvedOnly ? false : true });
               }}
             >
-              {state.resolvedOnly ? <Check className="size-2.5" aria-hidden="true" /> : null}
-              Metadata resolved
+              {state.resolvedOnly ? null : <Check className="size-2.5" aria-hidden="true" />}
+              Include partial records
             </Chip>
           </FilterGroup>
         </div>

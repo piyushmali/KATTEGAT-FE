@@ -2,7 +2,11 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AGENT_CATEGORIES, type AgentCategoryId, type ListAgentsParams } from '../../lib/api/contract';
+import {
+  AGENT_CATEGORIES,
+  type AgentCategoryId,
+  type ListAgentsParams,
+} from '../../lib/api/contract';
 
 /**
  * Discovery filter state, held in the URL.
@@ -24,12 +28,20 @@ export const SORT_OPTIONS = [
 
 export type SortValue = (typeof SORT_OPTIONS)[number]['value'];
 
+/**
+ * How an agent can be reached, which is the axis that decides whether it is usable.
+ *
+ * `unconfigured` is labelled "No endpoint" because that is what it means to a visitor:
+ * the agent registered an identity and published nothing to call. The enum name describes
+ * the record, the label describes the agent, and 155,000 entries sit in this bucket, so
+ * the difference is worth getting right.
+ */
 export const PROTOCOL_OPTIONS = [
   { value: 'a2a', label: 'A2A' },
   { value: 'mcp', label: 'MCP' },
   { value: 'http-api', label: 'HTTP API' },
   { value: 'custom', label: 'Custom' },
-  { value: 'unconfigured', label: 'Unconfigured' },
+  { value: 'unconfigured', label: 'No endpoint' },
 ] as const;
 
 export const TRAIT_OPTIONS = [
@@ -77,7 +89,23 @@ export function useDiscoveryParams() {
       traits: searchParams
         .getAll('trait')
         .filter((trait) => TRAIT_OPTIONS.some((option) => option.value === trait)),
-      resolvedOnly: searchParams.get('resolved') === '1',
+      /*
+       * On by default, opted out of with `?resolved=0`.
+       *
+       * The registry is ~317k identities and about 40% of them still have an unresolved
+       * registration file, because the document lives on a third-party host that has to be
+       * fetched one at a time. Those rows carry a real on-chain identity and nothing else:
+       * no name, no description, no category, no endpoint.
+       *
+       * With the default sort being newest-first, and the newest agents being exactly the
+       * ones the backlog has not reached, the unfiltered front page was almost entirely
+       * blank records. The catalogue looked broken while holding 190k complete entries.
+       *
+       * This hides nothing: the toggle is in the filter panel, the partial records are one
+       * click away, and every count shown reflects the filter in force. It changes which
+       * question the page answers first, from "what exists" to "what can I look at".
+       */
+      resolvedOnly: searchParams.get('resolved') !== '0',
       sort: isSort(rawSort) ? rawSort : 'registered_at',
       page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
     };
@@ -107,7 +135,8 @@ export function useDiscoveryParams() {
       if ('sort' in patch) {
         setOrDelete('sort', patch.sort && patch.sort !== 'registered_at' ? patch.sort : null);
       }
-      if ('resolvedOnly' in patch) setOrDelete('resolved', patch.resolvedOnly ? '1' : null);
+      // Inverted, so the default state leaves no parameter in the URL at all.
+      if ('resolvedOnly' in patch) setOrDelete('resolved', patch.resolvedOnly ? null : '0');
       if ('traits' in patch) {
         next.delete('trait');
         for (const trait of patch.traits ?? []) next.append('trait', trait);
@@ -137,13 +166,19 @@ export function useDiscoveryParams() {
     [state.traits, update],
   );
 
-  /** True when anything narrows the result set — drives the "clear" affordance. */
+  /**
+   * True when the view differs from the default, which drives the "clear" affordance.
+   *
+   * Deviation, not narrowing. `resolvedOnly` is now on by default, so it is *turning it
+   * off* that departs from the default view, and "Clear all" has to bring it back or the
+   * button would not return the user to where they started.
+   */
   const hasFilters =
     state.q.trim().length > 0 ||
     state.category !== null ||
     state.protocol !== null ||
     state.traits.length > 0 ||
-    state.resolvedOnly;
+    !state.resolvedOnly;
 
   /** Maps URL state onto the API's parameter names. */
   const queryParams = useMemo<ListAgentsParams>(() => {

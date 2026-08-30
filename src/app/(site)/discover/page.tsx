@@ -21,22 +21,34 @@ export default function DiscoverPage() {
         aria-hidden="true"
       />
 
-      <div className="relative mx-auto max-w-shell px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-        <header className="max-w-3xl">
-          <p className="eyebrow">The trading hall</p>
-          <h1 className="display mt-3 text-display-lg text-ink">Discover agents</h1>
-          <p className="mt-5 max-w-reading text-sm leading-7 text-ink-muted">
-            Find autonomous agents by what they can do — then inspect the evidence behind them.
-            Every agent here was indexed from the ERC-8004 identity registry on chain.
+      <div className="relative mx-auto max-w-shell px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+        {/*
+         * A working header, not a landing header.
+         *
+         * This was previously a `display-lg` title over a full paragraph with a 3rem gap
+         * beneath it, which pushed the search field and the first row of results below the
+         * fold. On a page whose entire job is to get someone to a result, the title was
+         * charging a screen of attention to say what the nav item already said.
+         *
+         * One line at section scale, one line of context, then the instrument.
+         */}
+        <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          <div>
+            <p className="eyebrow">The trading hall</p>
+            <h1 className="display mt-2.5 text-display-sm text-ink">Discover agents</h1>
+          </div>
+          <p className="max-w-sm text-xs leading-6 text-ink-muted">
+            Search by what an agent does, then check the evidence behind it. Every entry is indexed
+            from the ERC-8004 identity registry on chain.
           </p>
         </header>
 
-        <div className="mt-12">
-        {/*
-         * `useSearchParams` requires a Suspense boundary in the App Router. The
-         * fallback is the real grid skeleton, so the first paint already has the
-         * shape of the result.
-         */}
+        <div className="mt-8">
+          {/*
+           * `useSearchParams` requires a Suspense boundary in the App Router. The
+           * fallback is the real grid skeleton, so the first paint already has the
+           * shape of the result.
+           */}
           <Suspense fallback={<AgentGridSkeleton count={9} />}>
             <DiscoveryView />
           </Suspense>
