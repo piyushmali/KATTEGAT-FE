@@ -85,13 +85,20 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
               ) : null}
             </span>
           ) : (
-            // Honest about a real gap: agents found by the ID-walk backfill have no
-            // block timestamp, because that path does not read the Registered log.
-            <span
-              className="text-ink-faint"
-              title="This agent was discovered by registry enumeration rather than event replay, so its registration block is not known."
-            >
-              Not recorded
+            /*
+             * A real gap, and the common case: 317,010 of 317,476 agents have no block
+             * timestamp, because the ID-walk backfill does not read the `Registered` event
+             * and free RPC tiers will not serve enough log history to fill it in.
+             *
+             * Says what is still known rather than stopping at "Not recorded". Ids are
+             * minted sequentially, so the id alone places the agent in registration order,
+             * which is what the marketplace sorts by.
+             */
+            <span className="text-ink-faint">
+              Date not indexed
+              <span className="ml-1.5 text-3xs">
+                registration #{formatCount(identity.agentId)} in sequence
+              </span>
             </span>
           )}
         </DataRow>
