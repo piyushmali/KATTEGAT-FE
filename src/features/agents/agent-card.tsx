@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { ArrowUpRight, ShieldQuestion } from 'lucide-react';
 import { AgentImage } from '../../components/ui/agent-image';
 import { Badge, StatusDot } from '../../components/ui/badge';
-import { CATEGORY_LABELS, type Agent, type AgentCategoryAssignment } from '../../lib/api/contract';
+import {
+  CATEGORY_LABELS,
+  describeInterface,
+  type Agent,
+  type AgentCategoryAssignment,
+} from '../../lib/api/contract';
 import { formatScore } from '../../lib/utils/format';
 import { truncateAddress } from '../../lib/web3/chain';
 
@@ -42,31 +47,6 @@ const TRAIT_PRIORITY: { trait: string; label: string; tone: 'info' | 'amber' | '
 
 function primaryOf(categories: AgentCategoryAssignment[]): AgentCategoryAssignment | null {
   return categories.find((entry) => entry.isPrimary) ?? categories[0] ?? null;
-}
-
-/**
- * The protocol tag as a phrase a visitor can act on.
- *
- * The enum values leak implementation: `http-api` is punctuated for a database column,
- * and `unconfigured` describes the record rather than the agent. Worse, it conflated two
- * states, because an agent whose registration file never resolved is also tagged
- * `unconfigured` and that is a gap in KATTEGAT's index, not a fact about the agent.
- */
-function describeInterface(protocolTag: string, metadataMissing: boolean): string {
-  if (metadataMissing) return 'Interface unknown';
-
-  switch (protocolTag) {
-    case 'a2a':
-      return 'A2A endpoint';
-    case 'mcp':
-      return 'MCP server';
-    case 'http-api':
-      return 'HTTP API';
-    case 'custom':
-      return 'Custom endpoint';
-    default:
-      return 'No endpoint';
-  }
 }
 
 export function AgentCard({ agent }: { agent: Agent }) {

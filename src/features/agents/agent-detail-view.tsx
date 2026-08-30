@@ -7,7 +7,7 @@ import { Badge, StatusDot } from '../../components/ui/badge';
 import { Panel, PanelHeader } from '../../components/ui/card';
 import { AgentProfileSkeleton, ErrorState } from '../../components/ui/states';
 import { ApiError, describeError } from '../../lib/api/errors';
-import { CATEGORY_LABELS } from '../../lib/api/contract';
+import { CATEGORY_LABELS, describeInterface } from '../../lib/api/contract';
 import { agentIdentityUrl } from '../../lib/web3/chain';
 import { useAgent, useAgentReputation } from '../discovery/use-agents';
 import { AgentInterface } from './agent-interface';
@@ -160,8 +160,12 @@ export function AgentDetailView({ id }: { id: string }) {
                 <span className="text-line-strong" aria-hidden="true">
                   /
                 </span>
-                <Badge tone="neutral" mono>
-                  {agent.profile.protocolTag}
+                {/*
+                 * The same phrasing the grid uses. This badge printed the raw enum, so an
+                 * agent read "A2A endpoint" on its card and `a2a` on its own page.
+                 */}
+                <Badge tone={primaryEndpoint ? 'amber' : 'neutral'}>
+                  {describeInterface(agent.profile.protocolTag, metadataMissing)}
                 </Badge>
                 <span className="text-line-strong" aria-hidden="true">
                   /

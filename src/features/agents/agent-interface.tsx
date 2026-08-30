@@ -3,7 +3,11 @@ import type { ComponentType } from 'react';
 import { Badge } from '../../components/ui/badge';
 import { CopyButton } from '../../components/ui/copy-button';
 import { Panel, PanelHeader } from '../../components/ui/card';
-import type { AgentEndpoint, EndpointKind } from '../../lib/api/contract';
+import {
+  formatServiceVersion,
+  type AgentEndpoint,
+  type EndpointKind,
+} from '../../lib/api/contract';
 
 /**
  * How to actually reach the agent.
@@ -180,26 +184,43 @@ function EndpointRow({ endpoint }: { endpoint: AgentEndpoint }) {
 
         {endpoint.version ? (
           <span className="ml-auto shrink-0 font-mono text-3xs text-ink-faint">
-            v{endpoint.version}
+            {formatServiceVersion(endpoint.version)}
           </span>
         ) : null}
       </div>
 
       <div className="mt-2 flex items-start gap-1.5 pl-[1.375rem]">
         {/*
-         * The published value is always rendered, linked only when the backend judged it
-         * a safe `https:` target. A CAIP-10 contract reference and an `mcp://` URL are
-         * both real endpoints that cannot be an `href`, and showing a blank where one
-         * should be would hide what is genuinely on chain.
+         * Shows where the link actually goes, which is not always what the document says.
+         *
+         * A third of endpoints in the registry are templates: the operator publishes
+         * `/a2a/agents/{agentId}/card` once for their whole platform and expects the client
+         * to substitute. The backend fills those in from the agent's own on-chain id, so
+         * `url` is the resolved target while `value` stays the published string.
+         *
+         * Displaying `value` here meant the visible text read `{agentId}` while the href
+         * pointed somewhere else, and clicking through looked like a broken link even
+         * though it worked. Showing the resolved form keeps text and destination in
+         * agreement; the published template stays available on hover and in the raw
+         * registration file lower down the page.
+         *
+         * When there is no safe link at all, `value` is rendered as plain text. A CAIP-10
+         * contract reference, an `mcp://` URL and an unresolvable template are all real
+         * things to show, and none of them belongs in an `href`.
          */}
         {endpoint.url ? (
           <a
             href={endpoint.url}
             target="_blank"
             rel="noreferrer noopener"
+            title={
+              endpoint.url === endpoint.value
+                ? undefined
+                : `Published as a template: ${endpoint.value}`
+            }
             className="group min-w-0 flex-1 font-mono text-3xs break-all text-ink-secondary transition-colors hover:text-amber"
           >
-            {endpoint.value}
+            {endpoint.url}
             <ExternalLink
               className="ml-1 inline size-2.5 shrink-0 align-baseline text-ink-faint transition-colors group-hover:text-amber"
               aria-hidden="true"
@@ -211,10 +232,21 @@ function EndpointRow({ endpoint }: { endpoint: AgentEndpoint }) {
           </code>
         )}
 
-        <CopyButton value={endpoint.value} label={`${meta.label} endpoint`} />
+        <CopyButton value={endpoint.url ?? endpoint.value} label={`${meta.label} endpoint`} />
       </div>
 
-      <p className="mt-1.5 pl-[1.375rem] text-3xs leading-5 text-ink-faint">{meta.detail}</p>
+      <p className="mt-1.5 pl-[1.375rem] text-3xs leading-5 text-ink-faint">
+        {meta.detail}
+        {endpoint.url !== null && endpoint.url !== endpoint.value ? (
+          <>
+            {' '}
+            <span className="text-ink-faint/80">
+              The operator published this as a template; KATTEGAT filled in the agent id from
+              chain.
+            </span>
+          </>
+        ) : null}
+      </p>
     </li>
   );
 }
