@@ -173,7 +173,13 @@ export function AgentDetailView({ id }: { id: string }) {
                 <span className="font-mono text-2xs text-ink-faint">#{agent.identity.agentId}</span>
               </div>
 
-              <p className="mt-6 max-w-reading text-sm leading-7 text-ink-secondary">
+              {/*
+               * `whitespace-pre-line` because 655 agents write their description across
+               * several lines, and HTML collapses those into one run. Only here, not on the
+               * card, where the text is clamped to two lines and a line break would spend
+               * one of them on nothing.
+               */}
+              <p className="mt-6 max-w-reading text-sm leading-7 whitespace-pre-line text-ink-secondary">
                 {agent.profile.description ?? 'This agent published no description.'}
               </p>
 
