@@ -44,6 +44,31 @@ function primaryOf(categories: AgentCategoryAssignment[]): AgentCategoryAssignme
   return categories.find((entry) => entry.isPrimary) ?? categories[0] ?? null;
 }
 
+/**
+ * The protocol tag as a phrase a visitor can act on.
+ *
+ * The enum values leak implementation: `http-api` is punctuated for a database column,
+ * and `unconfigured` describes the record rather than the agent. Worse, it conflated two
+ * states, because an agent whose registration file never resolved is also tagged
+ * `unconfigured` and that is a gap in KATTEGAT's index, not a fact about the agent.
+ */
+function describeInterface(protocolTag: string, metadataMissing: boolean): string {
+  if (metadataMissing) return 'Interface unknown';
+
+  switch (protocolTag) {
+    case 'a2a':
+      return 'A2A endpoint';
+    case 'mcp':
+      return 'MCP server';
+    case 'http-api':
+      return 'HTTP API';
+    case 'custom':
+      return 'Custom endpoint';
+    default:
+      return 'No endpoint';
+  }
+}
+
 export function AgentCard({ agent }: { agent: Agent }) {
   const primary = primaryOf(agent.categories);
   const secondaryCount = agent.categories.filter((entry) => !entry.isPrimary).length;
@@ -55,6 +80,19 @@ export function AgentCard({ agent }: { agent: Agent }) {
 
   const metadataMissing = agent.profile.metadataResolvedAt === null;
   const declaredActive = agent.profile.traitTags.includes('declared-active');
+
+  /*
+   * Whether this agent publishes anything a client could call.
+   *
+   * The single most useful distinction in the grid, and it was missing: a card for an
+   * agent serving a live A2A card looked the same as one for a bare identity with nothing
+   * behind it. `protocolTag` alone did not carry it, because it was rendered as the raw
+   * enum value and `unconfigured` reads as a data problem rather than as "no endpoint".
+   */
+  const callable = agent.profile.endpoints.filter(
+    (endpoint) => endpoint.kind === 'a2a' || endpoint.kind === 'mcp',
+  ).length;
+  const interfaceLabel = describeInterface(agent.profile.protocolTag, metadataMissing);
 
   const traits = TRAIT_PRIORITY.filter((entry) => agent.profile.traitTags.includes(entry.trait));
   const capabilities = agent.profile.capabilities.slice(0, 3);
@@ -132,7 +170,21 @@ export function AgentCard({ agent }: { agent: Agent }) {
           <span className="text-line-strong" aria-hidden="true">
             /
           </span>
-          <span className="font-mono text-3xs text-ink-faint">{agent.profile.protocolTag}</span>
+          {/*
+           * Amber when the agent is callable, faint when it is not. This is the one place
+           * in the grid where colour is doing real work: it separates an agent you could
+           * use from a registry entry you could only look at.
+           */}
+          <span
+            className={callable > 0 ? 'text-3xs text-amber/85' : 'text-3xs text-ink-faint'}
+            title={
+              callable > 0
+                ? `Publishes ${String(callable)} endpoint${callable === 1 ? '' : 's'} a client can call`
+                : undefined
+            }
+          >
+            {interfaceLabel}
+          </span>
         </div>
 
         {/* ----------------------------- description --------------------------- */}

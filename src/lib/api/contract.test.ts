@@ -38,6 +38,21 @@ describe('agent contract', () => {
         protocol_tag: 'a2a',
         trait_tags: ['x402-paid'],
         image_url: 'https://www.iconaves.com/logo/test.png',
+        endpoints: [
+          {
+            label: 'A2A',
+            value: 'https://test.example/.well-known/agent-card.json',
+            url: 'https://test.example/.well-known/agent-card.json',
+            kind: 'a2a',
+            version: '0.3.0',
+          },
+          // Displayable, not linkable. Asserted below, because a renderer that treats
+          // `value` as an href would put on-chain input straight into a link target.
+          { label: null, value: 'mcp://test.example', url: null, kind: 'mcp', version: null },
+        ],
+        trust_models: ['reputation'],
+        x402_support: true,
+        declared_active: false,
         metadata_resolved_at: null,
       },
       categories: [
@@ -64,6 +79,12 @@ describe('agent contract', () => {
     expect(parsed.identity.walletAddress).toBeNull();
     expect(parsed.profile.protocolTag).toBe('a2a');
     expect(parsed.profile.metadataResolvedAt).toBeNull();
+    expect(parsed.profile.endpoints[0]?.kind).toBe('a2a');
+    expect(parsed.profile.endpoints[1]?.url).toBeNull();
+    expect(parsed.profile.trustModels).toEqual(['reputation']);
+    expect(parsed.profile.x402Support).toBe(true);
+    // A declared `false` must survive as `false`, not collapse into "unstated".
+    expect(parsed.profile.declaredActive).toBe(false);
     expect(parsed.categories[0]?.isPrimary).toBe(true);
     expect(parsed.reputation?.feedbackCount).toBe(3);
     // The decoded score must survive the mapping, not the raw fixed-point value.

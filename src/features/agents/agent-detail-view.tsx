@@ -10,6 +10,7 @@ import { ApiError, describeError } from '../../lib/api/errors';
 import { CATEGORY_LABELS } from '../../lib/api/contract';
 import { agentIdentityUrl } from '../../lib/web3/chain';
 import { useAgent, useAgentReputation } from '../discovery/use-agents';
+import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
 import { HiringPanel } from './hiring-panel';
@@ -73,7 +74,20 @@ export function AgentDetailView({ id }: { id: string }) {
   const primary = agent.categories.find((entry) => entry.isPrimary) ?? agent.categories[0];
   const classified = primary !== undefined && primary.category !== 'uncategorized';
   const metadataMissing = agent.profile.metadataResolvedAt === null;
-  const declaredActive = agent.profile.traitTags.includes('declared-active');
+
+  /*
+   * Three states, not two. Read from the profile field rather than the `declared-active`
+   * trait tag, because a tag can only be present or absent: an operator declaring
+   * `active: false` and an operator saying nothing both lose the tag, and those mean
+   * different things to someone deciding whether to call the agent.
+   */
+  const declaredActive = agent.profile.declaredActive;
+
+  /* The primary way in, if the agent published one. See `agent-interface.tsx`. */
+  const primaryEndpoint =
+    agent.profile.endpoints.find(
+      (endpoint) => endpoint.url !== null && (endpoint.kind === 'a2a' || endpoint.kind === 'mcp'),
+    ) ?? agent.profile.endpoints.find((endpoint) => endpoint.url !== null);
 
   return (
     <div>
@@ -84,10 +98,7 @@ export function AgentDetailView({ id }: { id: string }) {
        * about, so it gets an entrance the grid does not.
        */}
       <section className="relative isolate overflow-hidden border-b border-line">
-        <div
-          className="fog pointer-events-none absolute inset-0 opacity-60"
-          aria-hidden="true"
-        />
+        <div className="fog pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
         <div
           className="grid-field pointer-events-none absolute inset-0 opacity-20"
           aria-hidden="true"
@@ -131,8 +142,20 @@ export function AgentDetailView({ id }: { id: string }) {
 
               <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <StatusDot
-                  tone={declaredActive ? 'positive' : 'neutral'}
-                  label={declaredActive ? 'Declared active' : 'Status not declared'}
+                  tone={
+                    declaredActive === true
+                      ? 'positive'
+                      : declaredActive === false
+                        ? 'caution'
+                        : 'neutral'
+                  }
+                  label={
+                    declaredActive === true
+                      ? 'Operator declares active'
+                      : declaredActive === false
+                        ? 'Operator declares inactive'
+                        : 'Status not declared'
+                  }
                 />
                 <span className="text-line-strong" aria-hidden="true">
                   /
@@ -143,9 +166,7 @@ export function AgentDetailView({ id }: { id: string }) {
                 <span className="text-line-strong" aria-hidden="true">
                   /
                 </span>
-                <span className="font-mono text-2xs text-ink-faint">
-                  #{agent.identity.agentId}
-                </span>
+                <span className="font-mono text-2xs text-ink-faint">#{agent.identity.agentId}</span>
               </div>
 
               <p className="mt-6 max-w-reading text-sm leading-7 text-ink-secondary">
@@ -158,12 +179,30 @@ export function AgentDetailView({ id }: { id: string }) {
                   className="mt-5 max-w-reading rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-xs leading-6 text-caution"
                 >
                   This agent’s off-chain registration file could not be resolved, so its
-                  capabilities and description are unavailable. Its on-chain identity and
-                  ownership are still verified.
+                  capabilities and description are unavailable. Its on-chain identity and ownership
+                  are still verified.
                 </p>
               ) : null}
 
               <div className="mt-7 flex flex-wrap items-center gap-3">
+                {/*
+                 * The agent's own endpoint gets the lead position when it has one, because
+                 * it is the only link on the page that goes to the agent rather than to a
+                 * record of the agent. `Inspect on-chain` stays, demoted: verification
+                 * matters, but it is the second question.
+                 */}
+                {primaryEndpoint?.url ? (
+                  <a
+                    href={primaryEndpoint.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="group inline-flex h-10 items-center gap-2 rounded-control border border-amber-dim/30 bg-amber-wash/25 px-4 text-xs font-medium text-amber transition-colors duration-200 hover:bg-amber-wash/40"
+                  >
+                    Open {primaryEndpoint.kind === 'a2a' ? 'agent card' : 'endpoint'}
+                    <ExternalLink className="size-3" aria-hidden="true" />
+                  </a>
+                ) : null}
+
                 <a
                   href={agentIdentityUrl(agent.identity.agentId)}
                   target="_blank"
@@ -193,6 +232,22 @@ export function AgentDetailView({ id }: { id: string }) {
       <div className="mx-auto max-w-shell px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
           <div className="min-w-0 space-y-4">
+            {/*
+             * Interface leads the body, above reputation.
+             *
+             * Reputation answers "should I use this", which is only worth asking once
+             * "can I use this at all" has an answer. With the endpoints buried, every
+             * profile read as the same page with different words in it, because the one
+             * thing that varies between a working agent and an empty registration was
+             * the one thing not shown.
+             */}
+            <AgentInterface
+              endpoints={agent.profile.endpoints}
+              trustModels={agent.profile.trustModels}
+              x402Support={agent.profile.x402Support}
+              metadataResolved={!metadataMissing}
+            />
+
             <AgentReputationPanel
               agent={agent}
               live={reputationQuery.data ?? null}
@@ -228,20 +283,14 @@ export function AgentDetailView({ id }: { id: string }) {
  * registration file. KATTEGAT has not verified that any of them work, and saying so
  * is more useful than implying a guarantee we cannot make.
  */
-function CapabilityPanel({
-  capabilities,
-  traits,
-}: {
-  capabilities: string[];
-  traits: string[];
-}) {
+function CapabilityPanel({ capabilities, traits }: { capabilities: string[]; traits: string[] }) {
   if (capabilities.length === 0 && traits.length === 0) return null;
 
   return (
     <Panel>
       <PanelHeader
         title="Capabilities"
-        hint="Self-declared in the agent’s registration file — KATTEGAT has not verified that they function."
+        hint="Self-declared in the agent’s registration file. KATTEGAT has not verified that they function."
       />
       <div className="space-y-4 p-4 sm:p-5">
         {capabilities.length > 0 ? (
