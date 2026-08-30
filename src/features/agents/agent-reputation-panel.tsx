@@ -112,10 +112,10 @@ export function AgentReputationPanel({
              */}
             <p className="display text-xl text-ink">No reputation evidence yet</p>
             <p className="mt-2.5 max-w-lg text-xs leading-6 text-ink-muted">
-              No client has recorded feedback for this agent on the ERC-8004 reputation
-              registry. This is an <strong className="font-medium text-ink-secondary">absence
-              of evidence</strong>, not a low score — treat it as an unknown when deciding
-              whether to hire.
+              No client has recorded feedback for this agent on the ERC-8004 reputation registry.
+              This is an{' '}
+              <strong className="font-medium text-ink-secondary">absence of evidence</strong>, not a
+              low score. Treat it as an unknown when deciding whether to hire.
             </p>
           </div>
         )}
@@ -127,7 +127,11 @@ export function AgentReputationPanel({
             ERC-8004 reputation registry
           </Badge>
           {rawValue !== null && rawDecimals !== null ? (
-            <Badge tone="outline" mono title="Fixed-point value exactly as the registry returned it">
+            <Badge
+              tone="outline"
+              mono
+              title="Fixed-point value exactly as the registry returned it"
+            >
               raw {rawValue} @ {rawDecimals}dp
             </Badge>
           ) : null}

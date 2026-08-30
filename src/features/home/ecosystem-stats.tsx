@@ -89,12 +89,22 @@ export function HeroIndexStrip() {
     { label: 'distinct owners', value: data.ownerCount },
   ];
 
+  /*
+   * Figures given real size and set in the display face, divided by hairline rules.
+   *
+   * They previously sat inline at body size beside a muted label, which made 317,476
+   * agents look like a footnote. The number is the single most persuasive fact on the
+   * page, so it is now the largest thing in the strip, with the label subordinate beneath
+   * it rather than competing alongside.
+   */
   return (
-    <dl className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+    <dl className="grid grid-cols-3 gap-px overflow-hidden bg-line">
       {items.map((item) => (
-        <div key={item.label} className="flex items-baseline gap-2">
-          <dd className="tabular text-base font-medium text-ink">{formatCount(item.value)}</dd>
-          <dt className="text-2xs tracking-wide text-ink-faint">{item.label}</dt>
+        <div key={item.label} className="bg-void px-1 pr-4 first:pl-0 sm:pr-6">
+          <dd className="display tabular text-2xl leading-none text-ink sm:text-3xl">
+            {formatCount(item.value)}
+          </dd>
+          <dt className="eyebrow mt-2.5">{item.label}</dt>
         </div>
       ))}
     </dl>
@@ -124,18 +134,14 @@ export function FeedbackCoverage() {
       {data.feedbackRecords === 0 ? (
         <>
           No client feedback has been read into KATTEGAT&rsquo;s index yet. Reputation is fetched
-          from the registry when an agent&rsquo;s page is opened, so this counts what has been
-          read — not what exists on chain.
+          from the registry when an agent&rsquo;s page is opened, so this counts what has been read,
+          not what exists on chain.
         </>
       ) : (
         <>
-          <span className="tabular font-medium text-ink">
-            {formatCount(data.feedbackRecords)}
-          </span>{' '}
+          <span className="tabular font-medium text-ink">{formatCount(data.feedbackRecords)}</span>{' '}
           feedback records across{' '}
-          <span className="tabular font-medium text-ink">
-            {formatCount(data.ratedAgents)}
-          </span>{' '}
+          <span className="tabular font-medium text-ink">{formatCount(data.ratedAgents)}</span>{' '}
           {data.ratedAgents === 1 ? 'agent' : 'agents'} read so far from the ERC-8004 reputation
           registry. Coverage grows as agents are opened, so this is a floor rather than a total.
         </>

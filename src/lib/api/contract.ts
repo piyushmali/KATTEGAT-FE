@@ -97,6 +97,28 @@ export const agentIdentitySchema = z
     registeredAt: raw.registered_at,
   }));
 
+export const ENDPOINT_KINDS = ['a2a', 'mcp', 'web', 'wallet', 'social', 'other'] as const;
+
+export type EndpointKind = (typeof ENDPOINT_KINDS)[number];
+
+/**
+ * One entry from the agent's `services` array: where the agent can actually be reached.
+ *
+ * `value` and `url` are deliberately separate. `value` is what the operator published and
+ * is always displayed, including when it is a CAIP-10 contract reference or an `mcp://`
+ * scheme rather than a URL. `url` is set only when the backend judged the value safe to
+ * put in an `href`, so a `javascript:` endpoint is still shown but is never clickable.
+ */
+export const agentEndpointSchema = z.object({
+  label: z.string().nullable(),
+  value: z.string(),
+  url: z.string().nullable(),
+  kind: z.enum(ENDPOINT_KINDS),
+  version: z.string().nullable(),
+});
+
+export type AgentEndpoint = z.infer<typeof agentEndpointSchema>;
+
 export const agentProfileSchema = z
   .object({
     name: z.string(),
@@ -112,6 +134,10 @@ export const agentProfileSchema = z
      * the UI: the host is a third party and may be unreachable.
      */
     image_url: z.string().nullable(),
+    endpoints: z.array(agentEndpointSchema),
+    trust_models: z.array(z.string()),
+    x402_support: z.boolean().nullable(),
+    declared_active: z.boolean().nullable(),
     metadata_resolved_at: z.string().nullable(),
   })
   .transform((raw) => ({
@@ -121,6 +147,10 @@ export const agentProfileSchema = z
     protocolTag: raw.protocol_tag,
     traitTags: raw.trait_tags,
     imageUrl: raw.image_url,
+    endpoints: raw.endpoints,
+    trustModels: raw.trust_models,
+    x402Support: raw.x402_support,
+    declaredActive: raw.declared_active,
     /** Null means the off-chain registration file never resolved. */
     metadataResolvedAt: raw.metadata_resolved_at,
   }));

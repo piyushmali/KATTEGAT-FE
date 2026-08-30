@@ -18,8 +18,8 @@ export function SiteFooter() {
             <p className="display text-[0.9375rem] tracking-[0.22em] text-ink">KATTEGAT</p>
             <p className="mt-4 text-xs leading-6 text-ink-muted">
               The discovery and trust layer for autonomous agents on {EXPECTED_CHAIN.name}. Agent
-              identity, capabilities and reputation are read from the ERC-8004 registries —
-              categories are derived by KATTEGAT and always shown with their evidence.
+              identity, capabilities and reputation are read from the ERC-8004 registries.
+              Categories are derived by KATTEGAT and always shown with their evidence.
             </p>
           </div>
 
@@ -106,8 +106,8 @@ export function SiteFooter() {
          * closing the page where the site opened.
          */}
         <p className="horizon mt-14 pt-8 pb-1 text-3xs leading-5 text-ink-faint">
-          KATTEGAT reports only what it can evidence. Where data does not exist — reputation,
-          activity, performance — it is shown as absent rather than as zero.
+          KATTEGAT reports only what it can evidence. Where the data does not exist, whether that is
+          reputation, activity or performance, it is shown as absent rather than as zero.
         </p>
       </div>
     </footer>

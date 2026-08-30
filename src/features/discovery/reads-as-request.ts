@@ -109,7 +109,18 @@ export function shouldInterpret(state: {
     state.category !== null ||
     state.protocol !== null ||
     state.traits.length > 0 ||
-    state.resolvedOnly;
+    /*
+     * Off, not on.
+     *
+     * `resolvedOnly` is on by default now (see use-discovery-params), so testing for
+     * `true` here would mean no query was ever interpreted: the default state would look
+     * like a hand-set filter and every sentence would fall through to substring matching.
+     *
+     * Asking to *include* partial records is the explicit choice, and it is one the
+     * interpreter would override, because it derives `resolvedOnly: true` from phrasing
+     * like "with a track record". Deferring to the user is the whole point of this rule.
+     */
+    !state.resolvedOnly;
 
   if (hasExplicitFilter) return false;
   return readsAsRequest(state.q);

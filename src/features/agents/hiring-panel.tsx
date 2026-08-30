@@ -34,7 +34,7 @@ const AUTHORITY_TERMS = [
     icon: Lock,
     label: 'Permission scope',
     value: 'Enumerated',
-    detail: 'Only the specific actions you grant — never blanket wallet access.',
+    detail: 'Only the specific actions you grant. Never blanket wallet access.',
   },
   {
     icon: RotateCcw,
@@ -47,10 +47,7 @@ const AUTHORITY_TERMS = [
 export function HiringPanel({ agentName }: { agentName: string }) {
   return (
     <Panel>
-      <PanelHeader
-        title="Hiring"
-        action={<Badge tone="outline">Preview — not yet live</Badge>}
-      />
+      <PanelHeader title="Hiring" action={<Badge tone="outline">Preview</Badge>} />
 
       <div className="p-4 sm:p-5">
         <div>
@@ -67,7 +64,7 @@ export function HiringPanel({ agentName }: { agentName: string }) {
               Scoped authority, <em>not</em> wallet access
             </p>
             <p className="mt-2.5 text-xs leading-6 text-ink-muted">
-              When hiring goes live, putting {agentName} to work will grant it a bounded session —
+              When hiring goes live, putting {agentName} to work will grant it a bounded session,
               never open-ended access to your funds. You will see and approve every term below
               before anything is signed.
             </p>

@@ -3,12 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import {
-  AgentGridSkeleton,
-  EmptyState,
-  ErrorState,
-  InlineSpinner,
-} from '../../components/ui/states';
+import { AgentGridSkeleton, EmptyState, ErrorState } from '../../components/ui/states';
 import { AgentCard } from '../agents/agent-card';
 import { ApiError, describeError } from '../../lib/api/errors';
 import { isMockMode } from '../../config/env';
@@ -96,7 +91,7 @@ export function DiscoveryView() {
           className="flex items-center gap-2 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs text-caution"
         >
           <span className="size-1 shrink-0 rounded-pill bg-caution" aria-hidden="true" />
-          Mock data source — these agents are fixtures, not live ERC-8004 registry data.
+          Mock data source. These agents are fixtures, not live ERC-8004 registry data.
         </div>
       ) : null}
 
@@ -158,6 +153,8 @@ export function DiscoveryView() {
         state={state}
         categories={categoriesQuery.data?.data}
         totalForQuery={meta?.total}
+        // Distinguishes a background refetch from a first load.
+        isRefetching={active.isFetching && !active.isLoading}
         hasFilters={hasFilters}
         onUpdate={update}
         onToggleTrait={toggleTrait}
@@ -168,13 +165,12 @@ export function DiscoveryView() {
       />
 
       {/* ------------------------------- results ------------------------------ */}
-      <div className="flex min-h-5 items-center justify-end">
-        {/* Distinguishes a background refetch from a first load. */}
-        {active.isFetching && !active.isLoading ? (
-          <InlineSpinner label="Updating" />
-        ) : null}
-      </div>
-
+      {/*
+       * The refetch indicator moved into the filter bar, beside the result count it
+       * qualifies. It used to sit in a `min-h-5` row of its own between the filters and the
+       * grid, which reserved a strip of empty space on every render to hold something that
+       * appears for a few hundred milliseconds.
+       */}
       {active.isLoading ? (
         <AgentGridSkeleton count={9} />
       ) : active.isError ? (
@@ -182,8 +178,7 @@ export function DiscoveryView() {
           {...describeError(active.error)}
           upstream={
             active.error instanceof ApiError &&
-            (active.error.code === 'UPSTREAM_UNAVAILABLE' ||
-              active.error.code === 'NETWORK_ERROR')
+            (active.error.code === 'UPSTREAM_UNAVAILABLE' || active.error.code === 'NETWORK_ERROR')
           }
           requestId={active.error instanceof ApiError ? active.error.requestId : null}
           onRetry={() => {

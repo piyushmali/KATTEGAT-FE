@@ -68,7 +68,8 @@ describe('shouldInterpret — an explicit filter always wins', () => {
     category: null as string | null,
     protocol: null as string | null,
     traits: [] as string[],
-    resolvedOnly: false,
+    // The default state of the discovery view, not an absence of one.
+    resolvedOnly: true,
   };
 
   it('interprets a sentence when the user has set no filters', () => {
@@ -92,8 +93,13 @@ describe('shouldInterpret — an explicit filter always wins', () => {
     expect(shouldInterpret({ ...base, traits: ['tee-attested'] })).toBe(false);
   });
 
-  it('defers to the resolved-metadata filter', () => {
-    expect(shouldInterpret({ ...base, resolvedOnly: true })).toBe(false);
+  /*
+   * Asking to include partial records is the explicit choice here, because complete-only
+   * is the default. The interpreter derives `resolvedOnly: true` from phrasing like "with
+   * a track record", so running it would quietly undo exactly what the user asked for.
+   */
+  it('defers to a request for partial records', () => {
+    expect(shouldInterpret({ ...base, resolvedOnly: false })).toBe(false);
   });
 
   it('still declines a keyword even with no filters set', () => {

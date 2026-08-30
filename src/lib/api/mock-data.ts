@@ -34,6 +34,16 @@ type WireAgent = {
     protocol_tag: string;
     trait_tags: string[];
     image_url: string | null;
+    endpoints: {
+      label: string | null;
+      value: string;
+      url: string | null;
+      kind: 'a2a' | 'mcp' | 'web' | 'wallet' | 'social' | 'other';
+      version: string | null;
+    }[];
+    trust_models: string[];
+    x402_support: boolean | null;
+    declared_active: boolean | null;
     metadata_resolved_at: string | null;
   };
   categories: {
@@ -79,6 +89,25 @@ const MOCK_AGENTS: WireAgent[] = [
       protocol_tag: 'a2a',
       trait_tags: ['declared-active', 'reputation-trust'],
       image_url: 'https://www.iconaves.com/logo/pro.ave.ai.png',
+      endpoints: [
+        {
+          label: 'A2A',
+          value: 'https://meridian.example/.well-known/agent-card.json',
+          url: 'https://meridian.example/.well-known/agent-card.json',
+          kind: 'a2a',
+          version: '0.3.0',
+        },
+        {
+          label: 'web',
+          value: 'https://meridian.example/dashboard',
+          url: 'https://meridian.example/dashboard',
+          kind: 'web',
+          version: null,
+        },
+      ],
+      trust_models: ['reputation'],
+      x402_support: false,
+      declared_active: true,
       metadata_resolved_at: '2026-06-01T09:20:00.000Z',
     },
     categories: [
@@ -120,6 +149,18 @@ const MOCK_AGENTS: WireAgent[] = [
       protocol_tag: 'mcp',
       trait_tags: ['x402-paid', 'declared-active'],
       image_url: 'https://evoevo.ai/images/agent-mcp.webp',
+      endpoints: [
+        {
+          label: 'MCP',
+          value: 'https://tidewater.example/v1/mcp',
+          url: 'https://tidewater.example/v1/mcp',
+          kind: 'mcp',
+          version: '1.2.0',
+        },
+      ],
+      trust_models: ['reputation', 'crypto-economic'],
+      x402_support: true,
+      declared_active: true,
       metadata_resolved_at: '2026-06-04T14:06:00.000Z',
     },
     categories: [
@@ -160,6 +201,30 @@ const MOCK_AGENTS: WireAgent[] = [
       protocol_tag: 'a2a',
       trait_tags: ['multichain', 'declared-active'],
       image_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=kelp',
+      endpoints: [
+        {
+          label: 'A2A',
+          value: 'https://kelp.example/.well-known/agent-card.json',
+          url: 'https://kelp.example/.well-known/agent-card.json',
+          kind: 'a2a',
+          version: '0.3.0',
+        },
+        {
+          /*
+           * A CAIP-10 contract reference: displayable, not linkable. Present so the
+           * `value` / `url` split is exercised by the fixtures rather than only by unit
+           * tests, since it is the case a renderer is most likely to get wrong.
+           */
+          label: 'bap578',
+          value: 'eip155:56:0x15b15DF2fFFF6653C21C11b93fB8A7718CE854Ce/10711',
+          url: null,
+          kind: 'other',
+          version: null,
+        },
+      ],
+      trust_models: ['reputation'],
+      x402_support: false,
+      declared_active: true,
       metadata_resolved_at: '2026-06-11T08:49:00.000Z',
     },
     categories: [
@@ -201,6 +266,18 @@ const MOCK_AGENTS: WireAgent[] = [
       protocol_tag: 'a2a',
       trait_tags: ['tee-attested', 'declared-active', 'reputation-trust'],
       image_url: 'https://r2-image-worker.pieverse-img.workers.dev/sentinel.png',
+      endpoints: [
+        {
+          label: 'A2A',
+          value: 'https://ballast.example/.well-known/agent-card.json',
+          url: 'https://ballast.example/.well-known/agent-card.json',
+          kind: 'a2a',
+          version: '0.3.0',
+        },
+      ],
+      trust_models: ['reputation', 'tee-attestation'],
+      x402_support: false,
+      declared_active: true,
       metadata_resolved_at: '2026-07-02T19:35:00.000Z',
     },
     categories: [
@@ -241,6 +318,25 @@ const MOCK_AGENTS: WireAgent[] = [
       protocol_tag: 'mcp',
       trait_tags: ['x402-paid', 'multichain', 'declared-active'],
       image_url: 'https://rs.debot.ai/agent/grid.png',
+      endpoints: [
+        {
+          label: 'MCP',
+          value: 'https://fjord.example/mcp',
+          url: 'https://fjord.example/mcp',
+          kind: 'mcp',
+          version: '1.0.0',
+        },
+        {
+          label: 'telegram',
+          value: 'https://t.me/fjord_treasury',
+          url: 'https://t.me/fjord_treasury',
+          kind: 'social',
+          version: null,
+        },
+      ],
+      trust_models: ['reputation'],
+      x402_support: true,
+      declared_active: true,
       metadata_resolved_at: '2026-07-19T11:14:00.000Z',
     },
     // Genuinely spans two categories — exercises secondary-category rendering.
@@ -290,6 +386,12 @@ const MOCK_AGENTS: WireAgent[] = [
       protocol_tag: 'unconfigured',
       trait_tags: [],
       image_url: null,
+      // Nothing is known about this agent's interface, which is distinct from knowing it
+      // has none. `metadata_resolved_at: null` below is what tells the two apart.
+      endpoints: [],
+      trust_models: [],
+      x402_support: null,
+      declared_active: null,
       metadata_resolved_at: null,
     },
     categories: [
@@ -364,7 +466,9 @@ export function mockListAgents(params: ListAgentsParams) {
       case 'name':
         return a.profile.name.localeCompare(b.profile.name) * direction;
       case 'feedback':
-        return ((a.reputation?.feedback_count ?? -1) - (b.reputation?.feedback_count ?? -1)) * direction;
+        return (
+          ((a.reputation?.feedback_count ?? -1) - (b.reputation?.feedback_count ?? -1)) * direction
+        );
       case 'reputation':
         return ((a.reputation?.score ?? -1) - (b.reputation?.score ?? -1)) * direction;
       default:
@@ -529,7 +633,9 @@ export function mockStats() {
   const active = MOCK_AGENTS.filter((a) => a.profile.trait_tags.includes('declared-active')).length;
   const categories = new Set(
     MOCK_AGENTS.flatMap((a) =>
-      a.categories.filter((c) => c.is_primary && c.category !== 'uncategorized').map((c) => c.category),
+      a.categories
+        .filter((c) => c.is_primary && c.category !== 'uncategorized')
+        .map((c) => c.category),
     ),
   );
   const classified = MOCK_AGENTS.filter((a) =>

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { listAgentsResponseSchema, listCategoriesResponseSchema } from '../../lib/api/contract';
 import { mockListAgents, mockListCategories } from '../../lib/api/mock-data';
 import { AgentFilters } from '../discovery/agent-filters';
+import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
 import { HiringPanel } from './hiring-panel';
@@ -34,7 +35,8 @@ const baseState: DiscoveryState = {
   category: null,
   protocol: null,
   traits: [],
-  resolvedOnly: false,
+  // The discovery view's default: complete records only.
+  resolvedOnly: true,
   sort: 'registered_at',
   page: 1,
 };
@@ -93,18 +95,20 @@ describe('AgentReputationPanel', () => {
     render(
       <AgentReputationPanel
         agent={byId('56:900001')}
-        live={{
-          agentId: '56:900001',
-          feedbackCount: 41,
-          clientCount: 28,
-          summaryValue: 462,
-          summaryDecimals: 2,
-          score: 4.62,
-          origin: 'snapshot',
-          computedAt: new Date().toISOString(),
-          notes: ['Live registry read failed; showing the most recent cached reading.'],
-          isLoadingPlaceholder: undefined,
-        } as never}
+        live={
+          {
+            agentId: '56:900001',
+            feedbackCount: 41,
+            clientCount: 28,
+            summaryValue: 462,
+            summaryDecimals: 2,
+            score: 4.62,
+            origin: 'snapshot',
+            computedAt: new Date().toISOString(),
+            notes: ['Live registry read failed; showing the most recent cached reading.'],
+            isLoadingPlaceholder: undefined,
+          } as never
+        }
         isLoading={false}
       />,
     );
@@ -170,7 +174,7 @@ describe('HiringPanel', () => {
   it('marks itself a preview and disables the action rather than faking it', () => {
     render(<HiringPanel agentName="Meridian Rebalancer" />);
 
-    expect(screen.getByText(/not yet live/i)).toBeInTheDocument();
+    expect(screen.getByText(/^preview$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /hire agent/i })).toBeDisabled();
   });
 });
@@ -249,6 +253,68 @@ describe('AgentFilters', () => {
     expect(screen.queryByRole('button', { name: /^grid trading/i })).not.toBeInTheDocument();
   });
 
+  it('offers the interface filter without opening a disclosure', () => {
+    /*
+     * Roughly half the registry publishes no callable endpoint. Someone looking for an
+     * agent they can actually use must be able to say so from the default view, so this
+     * asserts the row is reachable without expanding "Filters" first.
+     */
+    render(
+      <AgentFilters
+        state={baseState}
+        categories={categories}
+        totalForQuery={6}
+        hasFilters={false}
+        onUpdate={noop}
+        onToggleTrait={noop}
+        onClear={noop}
+      />,
+    );
+
+    const group = screen.getByRole('group', { name: /filter by interface/i });
+    expect(group).toBeInTheDocument();
+
+    // Labelled for a visitor, not after the database column.
+    expect(screen.getByRole('button', { name: /^no endpoint$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /unconfigured/i })).toBeNull();
+  });
+
+  it('treats including partial records as the deviation, not the default', () => {
+    /*
+     * Complete records are the default view, so the badge on "Filters" must count the
+     * opt-in to partial records. Counting it the other way round would put a permanent
+     * "1" on the button in the state nobody chose.
+     */
+    const { unmount } = render(
+      <AgentFilters
+        state={baseState}
+        categories={categories}
+        totalForQuery={6}
+        hasFilters={false}
+        onUpdate={noop}
+        onToggleTrait={noop}
+        onClear={noop}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /^filters$/i })).toBeInTheDocument();
+    unmount();
+
+    render(
+      <AgentFilters
+        state={{ ...baseState, resolvedOnly: false }}
+        categories={categories}
+        totalForQuery={6}
+        hasFilters
+        onUpdate={noop}
+        onToggleTrait={noop}
+        onClear={noop}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /filters\s*1/i })).toBeInTheDocument();
+  });
+
   it('marks the selected category as pressed for assistive technology', () => {
     render(
       <AgentFilters
@@ -322,5 +388,74 @@ describe('AgentFilters', () => {
      * children, which is also what a screen reader announces for this region.
      */
     expect(screen.getByRole('status')).toHaveTextContent('4,528 agents');
+  });
+});
+
+describe('AgentInterface', () => {
+  const renderFor = (id: string) => {
+    const { profile } = byId(id);
+    return render(
+      <AgentInterface
+        endpoints={profile.endpoints}
+        trustModels={profile.trustModels}
+        x402Support={profile.x402Support}
+        metadataResolved={profile.metadataResolvedAt !== null}
+      />,
+    );
+  };
+
+  it('links an https endpoint so the agent can actually be reached', () => {
+    // Meridian Rebalancer: an A2A card and a web dashboard, both https.
+    renderFor('56:900001');
+
+    const link = screen.getByRole('link', {
+      name: /meridian\.example\/\.well-known\/agent-card\.json/,
+    });
+    expect(link).toHaveAttribute('href', 'https://meridian.example/.well-known/agent-card.json');
+    // Opening a third-party endpoint must not hand it a window reference.
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  it('shows a non-URL endpoint without turning it into a link', () => {
+    /*
+     * Kelp Yield Router carries a CAIP-10 contract reference. This is the invariant that
+     * matters most on this panel: the value is on-chain input, so anything that is not a
+     * verified https URL must reach the page as text and never as an href.
+     */
+    renderFor('56:900003');
+
+    const caip = 'eip155:56:0x15b15DF2fFFF6653C21C11b93fB8A7718CE854Ce/10711';
+    expect(screen.getByText(caip)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: new RegExp('eip155') })).toBeNull();
+  });
+
+  it('counts only machine-callable interfaces, not contact details', () => {
+    // Fjord Treasury Manager publishes an MCP server and a Telegram handle.
+    renderFor('56:900005');
+
+    expect(screen.getByText('1 callable interface')).toBeInTheDocument();
+  });
+
+  it('distinguishes "declared nothing" from "we do not know yet"', () => {
+    /*
+     * Agent #900006 never resolved its registration file. Saying it declared no endpoints
+     * would report a gap in KATTEGAT's index as a fact about the agent.
+     */
+    renderFor('56:900006');
+
+    expect(screen.getByText(/not known yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/declared no service endpoints/i)).toBeNull();
+  });
+
+  it('reports x402 support when the operator declared it', () => {
+    renderFor('56:900002');
+    expect(screen.getByText(/x402 accepted/i)).toBeInTheDocument();
+  });
+
+  it('stays silent about x402 when the operator said nothing', () => {
+    // Not "Not offered", which would answer a question the agent never answered.
+    renderFor('56:900006');
+    expect(screen.queryByText(/x402/i)).toBeNull();
+    expect(screen.queryByText(/pay per call/i)).toBeNull();
   });
 });
