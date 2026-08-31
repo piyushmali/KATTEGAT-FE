@@ -3,6 +3,7 @@ import { ArrowRight, BadgeCheck, Fingerprint, ScanSearch, ShieldCheck } from 'lu
 import { AgentPreview } from '@/features/home/agent-preview';
 import { EcosystemStats, FeedbackCoverage, HeroIndexStrip } from '@/features/home/ecosystem-stats';
 import { HarbourAtmosphere } from '@/features/home/harbour-atmosphere';
+import { LaunchCategories } from '@/features/home/launch-categories';
 import { Reveal } from '@/components/ui/reveal';
 import { EXPECTED_CHAIN } from '@/lib/web3/chain';
 
@@ -183,6 +184,41 @@ export default function HomePage() {
        * one edge. A heading, one line of context, then the list at full width gives the
        * content the room and the list stops looking like a sidebar widget.
        */}
+      {/* ----------------------------- categories ----------------------------- */}
+      {/*
+       * Placed directly after the hero, above arrivals and above the counts.
+       *
+       * "Find an agent by category" is the step the whole product turns on, and it used to
+       * be reachable only by going to Discover and picking the right chip out of twelve.
+       * Recency and ecosystem totals are context; choosing a category is the actual task, so
+       * it goes first.
+       */}
+      <section aria-labelledby="categories" className="border-t border-line">
+        <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <Reveal>
+            <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+              <div>
+                <p className="eyebrow">Start here</p>
+                <h2 id="categories" className="display mt-3 text-display-md text-ink">
+                  What do you need done?
+                </h2>
+              </div>
+              <p className="max-w-sm text-xs leading-6 text-ink-muted">
+                Four jobs agents do on {EXPECTED_CHAIN.name} today. Each one opens onto what
+                the work involves, what to check before trusting an agent with it, and who is
+                registered to do it.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="mt-10">
+              <LaunchCategories />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       <section aria-labelledby="arrivals" className="border-t border-line">
         <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <Reveal>
