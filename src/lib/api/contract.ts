@@ -366,6 +366,13 @@ export const searchInterpretationSchema = z
   .object({
     query: z.string(),
     resolved_by: z.enum(['rules', 'ai-assisted']),
+    /**
+     * True when the residual free text was dropped so the query would return something.
+     *
+     * Surfaced because the alternative is showing results that do not match the filters the
+     * interpretation panel claims were applied.
+     */
+    widened: z.boolean(),
     filters: z.object({
       text: z.string().nullable(),
       category: z.enum(AGENT_CATEGORIES).nullable(),
@@ -380,6 +387,7 @@ export const searchInterpretationSchema = z
   .transform((raw) => ({
     query: raw.query,
     resolvedBy: raw.resolved_by,
+    widened: raw.widened,
     filters: {
       text: raw.filters.text,
       category: raw.filters.category,
