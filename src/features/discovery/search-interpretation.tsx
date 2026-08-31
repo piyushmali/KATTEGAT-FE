@@ -124,10 +124,20 @@ export function SearchInterpretationPanel({
           <Sliders className="size-3.5" aria-hidden="true" />
           Edit as filters
         </Button>
+        {/*
+         * Says when the query was widened.
+         *
+         * The backend drops the residual free text when keeping it would return nothing, so
+         * "protect my loan from liquidation" reaches the 44 health-factor agents instead of
+         * an empty grid. That is a change to what was asked for, and a panel whose whole job
+         * is showing how the query was read cannot stay silent about it.
+         */}
         <p className="text-2xs text-ink-faint">
           {total === 0
             ? 'Nothing matched this reading. Edit the filters to widen it.'
-            : 'Adjust any part of this reading if it misread you.'}
+            : interpretation.widened
+              ? 'Your wording did not appear in any description, so it was matched on category alone.'
+              : 'Adjust any part of this reading if it misread you.'}
         </p>
       </div>
     </section>

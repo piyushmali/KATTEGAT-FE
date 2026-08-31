@@ -622,6 +622,7 @@ export function mockSearch(query: string, page = 1, perPage = 24) {
       interpretation: {
         query,
         resolved_by: 'rules' as const,
+        widened: false,
         filters: {
           text: null,
           category,
