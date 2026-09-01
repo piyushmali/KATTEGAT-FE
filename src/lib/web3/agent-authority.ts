@@ -3,12 +3,13 @@
 import {
   BNB,
   BNB_TESTNET,
+  buildHireCalls,
   createClient,
   signerFromPasskey,
   type NetworkConfig,
   type PasskeyCredential,
 } from '@altananetwork/sdk';
-import type { Hex } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 
 /**
  * The user's own agent authority, held in their device.
@@ -211,4 +212,169 @@ export function supportsPasskeys(): boolean {
     window.isSecureContext &&
     typeof window.PublicKeyCredential === 'function'
   );
+}
+
+/* ----------------------------- escrowed hires ----------------------------- */
+
+export interface EscrowTargets {
+  commerce: `0x${string}`;
+  router: `0x${string}`;
+  /**
+   * The policy this chain's router accepts, as reported by the API.
+   *
+   * Taken from the backend rather than from the SDK's own constant, because the SDK pins one
+   * address per chain and the router does not always whitelist it. Binding a policy the router
+   * rejects reverts, and then funding reverts too, so this is not a value to guess at.
+   */
+  policy: `0x${string}`;
+  paymentToken: `0x${string}`;
+  disputeWindowSeconds: number;
+}
+
+export interface CommissionInput {
+  networkName: string;
+  credential: PasskeyCredential;
+  escrow: EscrowTargets;
+  /** The agent's own wallet address, which is how the kernel names it as provider. */
+  provider: `0x${string}`;
+  task: string;
+  /** Budget in raw payment-token units. Zero is valid and moves no tokens. */
+  budgetRaw: bigint;
+  /**
+   * Native ceiling for the session, in wei.
+   *
+   * Needed even when the budget is zero. The relay fronts gas and charges its fee against this
+   * limit, so a session granted a zero allowance fails with `ExceededSpendLimit` before any of
+   * the hire's calls run: perfectly scoped and unable to act.
+   */
+  spendLimitWei: bigint;
+  durationMinutes: number;
+}
+
+export interface CommissionedJob {
+  jobId: number;
+  transactionHash: Hex | null;
+  /** The session that signed it, so the caller can record and later revoke it. */
+  sessionPublicKey: Hex;
+  walletAddress: `0x${string}`;
+  expiryUnix: number;
+  expiredAtUnix: number;
+}
+
+/**
+ * Commissions an escrowed ERC-8183 job. Prompts the user's biometric.
+ *
+ * Grants and spends in one flow rather than reusing a stored session, because `execute` needs the
+ * live `Session` object and only its public key survives a page load. The user therefore approves
+ * one thing: a key that may call three contracts, for a bounded time, with a bounded native
+ * allowance, in order to commission this specific job.
+ *
+ * The five calls are the SDK's own `buildHireCalls` — createJob, registerJob, setBudget, approve,
+ * fund — sent as one atomic batch. If any of them reverts, none of them happened, so a
+ * half-created job is not a state this can produce.
+ */
+export async function commissionWork(input: CommissionInput): Promise<CommissionedJob> {
+  const config = networkFor(input.networkName);
+  const client = createClient({ chains: [config] });
+  const signer = signerFromPasskey(input.credential);
+  const wallet = await client.createWallet({ signer });
+
+  const expiryUnix = Math.floor(Date.now() / 1000) + input.durationMinutes * 60;
+
+  const session = await client.grantSession({
+    wallet,
+    signer,
+    permissions: {
+      spend: [{ limit: input.spendLimitWei, period: 'day' }],
+      /*
+       * Exactly the three contracts a hire touches. Any narrower and the batch fails partway;
+       * any wider and the key can do more than commission work.
+       */
+      calls: [
+        { to: input.escrow.commerce },
+        { to: input.escrow.router },
+        { to: input.escrow.paymentToken },
+      ],
+    },
+    expiry: expiryUnix,
+    register: true,
+  });
+
+  const publicClient = createPublicClient({ chain: config.chain, transport: http(config.publicRpcUrl) });
+
+  /*
+   * The job id has to be predicted, because every call after `createJob` names it and they are all
+   * in the same batch. Ids are 1-indexed, so the next one is the counter plus one.
+   *
+   * If someone else creates a job in the same block the batch reverts as a whole, which is the
+   * safe way for this to fail: the SDK notes the same, and the remedy is to read the counter again
+   * and retry rather than to guess wider.
+   */
+  const counter = await publicClient.readContract({
+    address: input.escrow.commerce,
+    abi: [
+      { name: 'jobCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+    ] as const,
+    functionName: 'jobCounter',
+  });
+
+  const jobId = counter + 1n;
+
+  /*
+   * Must clear the dispute window, or the provider could never submit in time and the job would
+   * only ever expire. The extra half hour is slack for the batch to land.
+   */
+  const expiredAt = BigInt(Math.floor(Date.now() / 1000) + input.escrow.disputeWindowSeconds + 1800);
+
+  const calls = buildHireCalls({
+    addresses: {
+      commerce: input.escrow.commerce,
+      router: input.escrow.router,
+      policy: input.escrow.policy,
+      paymentToken: input.escrow.paymentToken,
+      /* Unused by `buildHireCalls`; it takes the whole address set for its own shape. */
+      registry: input.escrow.commerce,
+    },
+    jobId,
+    provider: input.provider,
+    description: input.task,
+    budget: input.budgetRaw,
+    expiredAt,
+  });
+
+  const result = await client.execute({ session, calls });
+
+  return {
+    jobId: Number(jobId),
+    transactionHash: result.transactionHash ?? null,
+    sessionPublicKey: session.publicKey,
+    walletAddress: wallet.address,
+    expiryUnix,
+    expiredAtUnix: Number(expiredAt),
+  };
+}
+
+/** The payment token balance the user holds, so a paid hire is not offered without funds. */
+export async function paymentTokenBalance(
+  networkName: string,
+  token: `0x${string}`,
+  holder: `0x${string}`,
+): Promise<bigint> {
+  const config = networkFor(networkName);
+  const publicClient = createPublicClient({ chain: config.chain, transport: http(config.publicRpcUrl) });
+
+  return publicClient.readContract({
+    address: token,
+    abi: [
+      {
+        name: 'balanceOf',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [{ type: 'address' }],
+        outputs: [{ type: 'uint256' }],
+      },
+    ] as const,
+    functionName: 'balanceOf',
+    args: [holder],
+  });
 }

@@ -694,6 +694,42 @@ export type AgentSession = z.infer<typeof agentSessionSchema>;
  * network it is on. Switching to mainnet is a backend environment change; this follows it, and
  * the copy that warns about real funds keys off `isMainnet`.
  */
+const hexAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
+
+/**
+ * What the browser needs to commission escrowed work.
+ *
+ * `policy_address` is the one value here that cannot be derived client-side. The SDK pins a policy
+ * per chain and the router does not always whitelist it; binding one it rejects reverts, and then
+ * funding reverts too. Only a chain read settles which is live, so the backend does that read.
+ */
+const escrowContextSchema = z
+  .object({
+    available: z.boolean(),
+    commerce_address: hexAddress,
+    router_address: hexAddress,
+    policy_address: hexAddress,
+    payment_token_address: hexAddress,
+    payment_token_symbol: z.string(),
+    payment_token_decimals: z.number().int(),
+    dispute_window_seconds: z.number().int(),
+    allowed_targets: z.array(hexAddress),
+  })
+  .transform((raw) => ({
+    /** False when no policy on this chain is whitelisted, so hiring cannot work at all. */
+    available: raw.available,
+    commerce: raw.commerce_address as `0x${string}`,
+    router: raw.router_address as `0x${string}`,
+    policy: raw.policy_address as `0x${string}`,
+    paymentToken: raw.payment_token_address as `0x${string}`,
+    tokenSymbol: raw.payment_token_symbol,
+    tokenDecimals: raw.payment_token_decimals,
+    /** Seconds a delivered job is held before the escrow can be released. */
+    disputeWindowSeconds: raw.dispute_window_seconds,
+    /** The exact contracts a hiring session must be scoped to, in the order the API sent them. */
+    allowedTargets: raw.allowed_targets as `0x${string}`[],
+  }));
+
 const hiringContextSchema = z
   .object({
     enabled: z.boolean(),
@@ -704,6 +740,7 @@ const hiringContextSchema = z
     explorer_url: z.string(),
     keystore_address: z.string(),
     gas_sponsored: z.boolean(),
+    escrow: escrowContextSchema,
   })
   .transform((raw) => ({
     enabled: raw.enabled,
@@ -714,9 +751,48 @@ const hiringContextSchema = z
     explorerUrl: raw.explorer_url,
     keystoreAddress: raw.keystore_address,
     gasSponsored: raw.gas_sponsored,
+    escrow: raw.escrow,
   }));
 
+export const recordedJobSchema = z
+  .object({
+    job_id: z.number().int(),
+    chain_id: z.number().int(),
+    status: z.string(),
+    client_address: z.string(),
+    provider_address: z.string(),
+    budget_raw: z.string(),
+    description: z.string(),
+    expired_at: z.string(),
+    counts_as_evidence: z.boolean(),
+  })
+  .transform((raw) => ({
+    jobId: raw.job_id,
+    chainId: raw.chain_id,
+    status: raw.status,
+    clientAddress: raw.client_address,
+    providerAddress: raw.provider_address,
+    budgetRaw: raw.budget_raw,
+    description: raw.description,
+    expiredAt: raw.expired_at,
+    /**
+     * Whether this hire counts toward the agent's public record.
+     *
+     * False on testnet, where the session chain is not the chain the catalogue was indexed from.
+     * The hire is real and verified either way, but the agent is not registered on that kernel, so
+     * the UI has to say which it is rather than imply a track record.
+     */
+    countsAsEvidence: raw.counts_as_evidence,
+  }));
+
+export const recordJobResponseSchema = z
+  .object({ data: recordedJobSchema, meta: hiringContextSchema })
+  .transform((raw) => ({ job: raw.data, context: raw.meta }));
+
 export type HiringContext = z.infer<typeof hiringContextSchema>;
+export type EscrowContext = z.infer<typeof escrowContextSchema>;
+export type RecordedJob = z.infer<typeof recordedJobSchema>;
+export type RecordJobResponse = z.infer<typeof recordJobResponseSchema>;
 
 export const listSessionsResponseSchema = z
   .object({ data: z.array(agentSessionSchema), meta: hiringContextSchema })

@@ -11,6 +11,7 @@ import { formatDate } from '../../lib/utils/format';
 import { truncateAddress } from '../../lib/web3/chain';
 import type { AgentSession, SpendPeriod } from '../../lib/api/contract';
 import { supportsPasskeys } from '../../lib/web3/agent-authority';
+import { CommissionForm } from './commission-form';
 import { useAgentSessions, useHireAgent, useRevokeAgent } from './use-hiring';
 
 /**
@@ -81,7 +82,22 @@ const PRESET_TARGETS = [
 
 const SPEND_PERIOD: SpendPeriod = 'day';
 
-export function HiringPanel({ agentId, agentName }: { agentId: string; agentName: string }) {
+export function HiringPanel({
+  agentId,
+  agentName,
+  providerAddress,
+}: {
+  agentId: string;
+  agentName: string;
+  /**
+   * The agent's own wallet address, which is how the escrow kernel names it as a provider.
+   *
+   * Null when the agent published none. Granting authority still works in that case, because a
+   * session is about the user's own wallet; commissioning work does not, because there is no
+   * address to pay.
+   */
+  providerAddress: string | null;
+}) {
   const sessionsQuery = useAgentSessions(agentId);
   const hire = useHireAgent(agentId);
   const revoke = useRevokeAgent(agentId);
@@ -324,6 +340,22 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
             </div>
           </>
         )}
+
+        {/* --------------------------- commission work --------------------------- */}
+        {/*
+         * Below the grant form, because the two are a sequence rather than alternatives: a grant
+         * says what the agent may do, this asks it to do something and pays for the result. Both
+         * are signed by the same passkey, and this one scopes its session to the escrow contracts
+         * on its own rather than reusing whatever the form above selected.
+         */}
+        {context?.enabled ? (
+          <CommissionForm
+            agentId={agentId}
+            agentName={agentName}
+            providerAddress={providerAddress}
+            context={context}
+          />
+        ) : null}
 
         {/* ---------------------------- granted authority ---------------------------- */}
         {live.length > 0 ? (
