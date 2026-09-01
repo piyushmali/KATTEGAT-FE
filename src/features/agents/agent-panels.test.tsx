@@ -7,6 +7,7 @@ import { AgentFilters } from '../discovery/agent-filters';
 import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
+import { EscrowPanel } from './escrow-panel';
 import { formatWei, HiringPanel } from './hiring-panel';
 import type { DiscoveryState } from '../discovery/use-discovery-params';
 
@@ -544,5 +545,61 @@ describe('AgentInterface', () => {
     renderFor('56:900006');
     expect(screen.queryByText(/x402/i)).toBeNull();
     expect(screen.queryByText(/pay per call/i)).toBeNull();
+  });
+});
+
+describe('EscrowPanel', () => {
+  const renderPanel = (id: string) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <EscrowPanel agent={byId(id)} />
+      </QueryClientProvider>,
+    );
+  };
+
+  it('presents no escrow history as nothing recorded, not a poor record', () => {
+    /*
+     * The state almost every agent is in: 53 of 317,476 indexed agents have a job on the kernel.
+     * If this ever reads as a failure, the panel damages the overwhelming majority of the
+     * catalogue for having done nothing wrong.
+     */
+    renderPanel('56:900003');
+
+    expect(screen.getByText(/never hired through on-chain escrow/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing recorded yet/i)).toBeInTheDocument();
+    // A zero here would read as "delivered nothing", which is a different and worse claim.
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+
+  it('leads with escrow actually released rather than with jobs created', () => {
+    // Meridian: 14 jobs named, 9 funded, 6 released for 0.6 U.
+    renderPanel('56:900001');
+
+    expect(screen.getByText('0.6')).toBeInTheDocument();
+    expect(screen.getByText(/released to this agent/i)).toBeInTheDocument();
+    // The funded count is the denominator on show, not the total.
+    expect(screen.getByText('9')).toBeInTheDocument();
+  });
+
+  it('says plainly that unfunded jobs are excluded from every figure', () => {
+    /*
+     * The honesty rule that matters most here. Creating a job and naming any provider costs
+     * nothing and needs no agreement from that agent, so 5 of Meridian's 14 could have been
+     * opened by anyone. Without this sentence the headline count looks unexplainably smaller
+     * than the job list.
+     */
+    renderPanel('56:900001');
+
+    expect(screen.getByText(/never funded/i)).toBeInTheDocument();
+    expect(screen.getByText(/costs nothing/i)).toBeInTheDocument();
+  });
+
+  it('offers the escrow contract for independent verification', () => {
+    renderPanel('56:900001');
+
+    // The point of showing escrow over a rating is that a stranger can check it.
+    expect(screen.getByText(/erc-8183 escrow/i)).toBeInTheDocument();
   });
 });

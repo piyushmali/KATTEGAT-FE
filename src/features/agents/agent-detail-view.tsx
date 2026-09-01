@@ -13,6 +13,7 @@ import { useAgent, useAgentReputation } from '../discovery/use-agents';
 import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
+import { EscrowPanel } from './escrow-panel';
 import { HiringPanel } from './hiring-panel';
 import { OnChainIdentity } from './onchain-identity';
 
@@ -257,6 +258,15 @@ export function AgentDetailView({ id }: { id: string }) {
               x402Support={agent.profile.x402Support}
               metadataResolved={!metadataMissing}
             />
+
+            {/*
+             * Escrow above reputation, deliberately.
+             *
+             * Both answer "should I trust this", but a job is a budget that was locked on chain
+             * and released, while a reputation score is what a client said afterwards. When the
+             * two disagree, the payment is the better evidence, so it reads first.
+             */}
+            <EscrowPanel agent={agent} />
 
             <AgentReputationPanel
               agent={agent}

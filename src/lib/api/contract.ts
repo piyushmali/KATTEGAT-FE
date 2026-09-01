@@ -1,3 +1,4 @@
+import { formatUnits } from 'viem';
 import { z } from 'zod';
 
 /**
@@ -243,11 +244,134 @@ export const agentReputationSchema = z
     computedAt: raw.computed_at,
   }));
 
+/* --------------------------------- escrow --------------------------------- */
+
+/**
+ * ERC-8183 job escrow: work this agent was actually paid for.
+ *
+ * The hardest evidence in the catalogue. Reputation records what clients said; a job records a
+ * budget locked in the AgenticCommerce kernel, delivered against, and released.
+ *
+ * Amounts arrive as raw integer strings with the token's decimals beside them, and are formatted
+ * here rather than in each component, so one place decides how a settlement figure reads.
+ */
+export const agentJobsSchema = z
+  .object({
+    total: z.number(),
+    funded: z.number(),
+    completed: z.number(),
+    awaiting_release: z.number(),
+    settled_raw: z.string(),
+    escrowed_raw: z.string(),
+    token_symbol: z.string(),
+    token_decimals: z.number(),
+    last_job_at: z.string().nullable(),
+  })
+  .transform((raw) => ({
+    /**
+     * Jobs naming this agent, funded or not.
+     *
+     * Creating a job costs nothing, so this is a count of claims. `funded` is the count that
+     * cost someone something, and the UI leads with that one.
+     */
+    total: raw.total,
+    funded: raw.funded,
+    completed: raw.completed,
+    /** Delivered and still inside the dispute window, so not yet released. */
+    awaitingRelease: raw.awaiting_release,
+    settledRaw: raw.settled_raw,
+    escrowedRaw: raw.escrowed_raw,
+    /** Released to this agent, formatted. `formatUnits` already trims trailing zeros. */
+    settled: formatUnits(BigInt(raw.settled_raw), raw.token_decimals),
+    /** Locked against this agent, whatever the outcome. Excludes unfunded jobs. */
+    escrowed: formatUnits(BigInt(raw.escrowed_raw), raw.token_decimals),
+    tokenSymbol: raw.token_symbol,
+    tokenDecimals: raw.token_decimals,
+    lastJobAt: raw.last_job_at,
+  }));
+
+export const JOB_STATUSES = [
+  'OPEN',
+  'FUNDED',
+  'SUBMITTED',
+  'COMPLETED',
+  'REJECTED',
+  'EXPIRED',
+  'UNKNOWN',
+] as const;
+
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+export const agentJobSchema = z
+  .object({
+    job_id: z.number(),
+    chain_id: z.number(),
+    status: z.enum(JOB_STATUSES),
+    client_address: z.string(),
+    budget_raw: z.string(),
+    description: z.string(),
+    expired_at: z.string(),
+    submitted_at: z.string().nullable(),
+    deliverable_hash: z.string().nullable(),
+  })
+  .transform((raw) => ({
+    jobId: raw.job_id,
+    chainId: raw.chain_id,
+    status: raw.status,
+    clientAddress: raw.client_address,
+    budgetRaw: raw.budget_raw,
+    /** The commissioning text exactly as it was written on chain. */
+    description: raw.description,
+    expiredAt: raw.expired_at,
+    submittedAt: raw.submitted_at,
+    /** The provider's commitment to what it delivered. Null until submission. */
+    deliverableHash: raw.deliverable_hash,
+  }));
+
+export const jobsContextSchema = z
+  .object({
+    chain_id: z.number(),
+    commerce_address: z.string(),
+    explorer_url: z.string(),
+    token_symbol: z.string(),
+    token_decimals: z.number(),
+    dispute_window_seconds: z.number(),
+    summary: agentJobsSchema,
+  })
+  .transform((raw) => ({
+    chainId: raw.chain_id,
+    /** The escrow contract, so a visitor can check any of this on the explorer. */
+    commerceAddress: raw.commerce_address,
+    explorerUrl: raw.explorer_url,
+    tokenSymbol: raw.token_symbol,
+    tokenDecimals: raw.token_decimals,
+    /**
+     * How long after delivery the escrow is held before it can be released.
+     *
+     * Carried so "delivered, not yet paid" reads as the expected state it is rather than as
+     * something having gone wrong. Seven days on mainnet.
+     */
+    disputeWindowSeconds: raw.dispute_window_seconds,
+    summary: raw.summary,
+  }));
+
+export const listAgentJobsResponseSchema = z.object({
+  data: z.array(agentJobSchema),
+  meta: jobsContextSchema,
+});
+
 export const agentSchema = z.object({
   identity: agentIdentitySchema,
   profile: agentProfileSchema,
   categories: z.array(agentCategorySchema),
   reputation: agentReputationSchema.nullable(),
+  /**
+   * Null when no job on the escrow kernel names this agent, which is the ordinary case.
+   *
+   * Null rather than zeroes on purpose: a row of zeroes reads as "hired and delivered nothing",
+   * which says something much worse about an agent than "not yet hired through this rail".
+   */
+  jobs: agentJobsSchema.nullable(),
 });
 
 export const paginationSchema = z
@@ -481,6 +605,10 @@ export type AgentIdentity = z.output<typeof agentIdentitySchema>;
 export type AgentProfile = z.output<typeof agentProfileSchema>;
 export type AgentCategoryAssignment = z.output<typeof agentCategorySchema>;
 export type AgentReputation = z.output<typeof agentReputationSchema>;
+export type AgentJobs = z.output<typeof agentJobsSchema>;
+export type AgentJob = z.output<typeof agentJobSchema>;
+export type JobsContext = z.output<typeof jobsContextSchema>;
+export type ListAgentJobsResponse = z.output<typeof listAgentJobsResponseSchema>;
 export type Pagination = z.output<typeof paginationSchema>;
 export type Category = z.output<typeof categorySchema>;
 export type ListAgentsResponse = z.output<typeof listAgentsResponseSchema>;

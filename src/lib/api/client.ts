@@ -5,6 +5,7 @@ import {
   agentDetailResponseSchema,
   agentSessionSchema,
   ecosystemStatsResponseSchema,
+  listAgentJobsResponseSchema,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
   listSessionsResponseSchema,
@@ -14,6 +15,7 @@ import {
   sponsorGasResponseSchema,
   type Agent,
   type EcosystemStats,
+  type ListAgentJobsResponse,
   type ListAgentsParams,
   type ListAgentsResponse,
   type ListCategoriesResponse,
@@ -24,6 +26,7 @@ import {
 } from './contract';
 import {
   mockAgentDetail,
+  mockAgentJobs,
   mockListAgents,
   mockListCategories,
   mockReputation,
@@ -250,6 +253,36 @@ export const api = {
       signal,
     );
     return result.data;
+  },
+
+  /**
+   * ERC-8183 jobs this agent was hired for.
+   *
+   * Its own request rather than part of the agent payload, for the same reason reputation is:
+   * the agent response carries the tally, which is what a card needs, and the job rows are only
+   * worth fetching once someone opens the agent.
+   */
+  async listAgentJobs(
+    id: string,
+    limit = 20,
+    signal?: AbortSignal,
+  ): Promise<ListAgentJobsResponse> {
+    if (env.dataSource === 'mock') {
+      const payload = mockAgentJobs(id);
+      if (!payload) {
+        throw new ApiError({
+          code: 'NOT_FOUND',
+          message: `No agent with id "${id}" has been indexed.`,
+          status: 404,
+        });
+      }
+      return listAgentJobsResponseSchema.parse(payload);
+    }
+    return request(
+      `/api/v1/agents/${encodeURIComponent(id)}/jobs?limit=${String(limit)}`,
+      listAgentJobsResponseSchema,
+      signal,
+    );
   },
 
   /** Marketplace-wide counts for the landing page. Real counts only. */
