@@ -2,10 +2,11 @@
   "name": "kattegat-fe",
   "version": "0.1.0",
   "private": true,
-  "description": "KATTEGAT frontend — the home of autonomous agents on BNB Smart Chain",
+  "description": "KATTEGAT frontend \u2014 the home of autonomous agents on BNB Smart Chain",
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "pnpm@10.33.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
