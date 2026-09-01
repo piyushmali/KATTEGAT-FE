@@ -5,19 +5,20 @@ import {
   agentDetailResponseSchema,
   agentSessionSchema,
   ecosystemStatsResponseSchema,
-  grantSessionResponseSchema,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
   listSessionsResponseSchema,
+  recordSessionResponseSchema,
   reputationResponseSchema,
   searchResponseSchema,
+  sponsorGasResponseSchema,
   type Agent,
   type EcosystemStats,
-  type GrantSessionInput,
   type ListAgentsParams,
   type ListAgentsResponse,
   type ListCategoriesResponse,
   type ListSessionsResponse,
+  type RecordSessionInput,
   type ReputationDetail,
   type SearchResponse,
 } from './contract';
@@ -276,16 +277,28 @@ export const api = {
   /* -------------------------------- hiring -------------------------------- */
 
   /**
-   * Authority granted to an agent, past and present.
+   * Authority granted to an agent, past and present, plus the chain context.
    *
    * Not mocked. Every other endpoint has a fixture so the UI can be developed without a
    * backend, and this one deliberately does not: a fake session would render a spend cap and
-   * an explorer link for authority that does not exist. In mock mode the panel reports hiring
+   * an explorer link for authority that does not exist. In mock mode hiring reports itself
    * unavailable, which is true.
    */
   async listAgentSessions(id: string, signal?: AbortSignal): Promise<ListSessionsResponse> {
     if (env.dataSource === 'mock') {
-      return { sessions: [], enabled: false, chainId: 97, explorerUrl: '', sandbox: false };
+      return {
+        sessions: [],
+        context: {
+          enabled: false,
+          chainId: 97,
+          network: 'bnb-testnet',
+          isMainnet: false,
+          nativeSymbol: 'tBNB',
+          explorerUrl: '',
+          keystoreAddress: '',
+          gasSponsored: false,
+        },
+      };
     }
     return request(
       `/api/v1/agents/${encodeURIComponent(id)}/sessions`,
@@ -294,23 +307,46 @@ export const api = {
     );
   },
 
-  /** Grants scoped authority. Writes to chain, so no mock path and no timeout shortcut. */
-  async grantSession(id: string, input: GrantSessionInput) {
+  /**
+   * Asks the backend to top up a wallet with gas.
+   *
+   * The sponsor key can only send native tokens. It cannot grant or revoke anything, which is
+   * why this is safe to expose: the worst it does is give someone three cents of gas.
+   */
+  async sponsorGas(agentId: string, walletAddress: string) {
     return mutate(
-      `/api/v1/agents/${encodeURIComponent(id)}/sessions`,
+      `/api/v1/agents/${encodeURIComponent(agentId)}/sessions/gas`,
       'POST',
-      grantSessionResponseSchema,
+      sponsorGasResponseSchema,
+      { wallet_address: walletAddress },
+    );
+  },
+
+  /**
+   * Reports a session the user's passkey already granted on chain.
+   *
+   * A report, not a request. The backend verifies it against the public Keystore and rejects
+   * anything the registry does not confirm, so this cannot be used to fabricate authority.
+   */
+  async recordSession(agentId: string, input: RecordSessionInput) {
+    return mutate(
+      `/api/v1/agents/${encodeURIComponent(agentId)}/sessions`,
+      'POST',
+      recordSessionResponseSchema,
       {
+        wallet_address: input.walletAddress,
+        public_key: input.publicKey,
         spend_limit_wei: input.spendLimitWei,
         spend_period: input.spendPeriod,
-        duration_minutes: input.durationMinutes,
         allowed_targets: input.allowedTargets,
+        expires_at_unix: input.expiresAtUnix,
+        granted_tx_hash: input.grantedTxHash,
       },
     );
   },
 
-  /** Revokes on chain. The session cannot act again once this resolves. */
-  async revokeSession(publicKey: string) {
+  /** Confirms a revocation the user's passkey performed. Verified before it is recorded. */
+  async confirmRevoked(publicKey: string) {
     return mutate(
       `/api/v1/sessions/${encodeURIComponent(publicKey)}`,
       'DELETE',

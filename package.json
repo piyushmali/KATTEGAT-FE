@@ -26,6 +26,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@altananetwork/sdk": "^0.8.0",
     "@tanstack/react-query": "5.102.8",
     "clsx": "2.1.1",
     "lucide-react": "1.34.0",

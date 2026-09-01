@@ -180,6 +180,21 @@ describe('HiringPanel', () => {
     ).toBeInTheDocument();
   });
 
+  it('never claims KATTEGAT can act on the user behalf', () => {
+    /*
+     * The regression that matters most here, and the one that already happened once.
+     *
+     * An earlier version of this panel had the backend hold an admin key and sign every grant,
+     * and described it as a sandbox. Custodial with a disclaimer. If anyone reintroduces a
+     * server-signed path, the honest copy for it would have to say so, and this test fails on
+     * the language that would accompany it.
+     */
+    renderPanel();
+
+    const body = document.body.textContent ?? '';
+    expect(body).not.toMatch(/on your behalf(?!\.)|KATTEGAT-operated|we hold|our key signs/i);
+  });
+
   it('says hiring is switched off rather than showing a form that cannot work', async () => {
     /*
      * In mock mode the client reports `enabled: false`, because there is deliberately no
