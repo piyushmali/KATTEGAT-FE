@@ -3,16 +3,21 @@ import { env } from '../../config/env';
 import { ApiError, apiErrorFromResponse } from './errors';
 import {
   agentDetailResponseSchema,
+  agentSessionSchema,
   ecosystemStatsResponseSchema,
+  grantSessionResponseSchema,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
+  listSessionsResponseSchema,
   reputationResponseSchema,
   searchResponseSchema,
   type Agent,
   type EcosystemStats,
+  type GrantSessionInput,
   type ListAgentsParams,
   type ListAgentsResponse,
   type ListCategoriesResponse,
+  type ListSessionsResponse,
   type ReputationDetail,
   type SearchResponse,
 } from './contract';
@@ -36,6 +41,14 @@ import {
  */
 
 const REQUEST_TIMEOUT_MS = 15_000;
+
+/**
+ * Budget for a request that settles a transaction on chain.
+ *
+ * Granting a session waits on the Altana relay and a BSC block, measured at roughly twenty
+ * seconds on testnet. The read timeout would abort that mid-flight.
+ */
+const CHAIN_WRITE_TIMEOUT_MS = 90_000;
 
 function buildQuery(params: ListAgentsParams): string {
   const search = new URLSearchParams();
@@ -100,6 +113,65 @@ async function request<TSchema extends z.ZodType>(
   if (!parsed.success) {
     // Loud on purpose. Silently coercing a drifted contract is how a UI ends up
     // rendering "undefined" to a user.
+    throw new ApiError({
+      code: 'CONTRACT_MISMATCH',
+      message: 'The API response did not match the expected contract.',
+      status: response.status,
+      requestId: response.headers.get('x-request-id'),
+      details: parsed.error.issues.slice(0, 5),
+    });
+  }
+
+  return parsed.data as z.output<TSchema>;
+}
+
+/**
+ * A write, with the same contract guarantees as {@link request}.
+ *
+ * Separate because writes here settle a transaction on BNB Chain. The read timeout of 15s is
+ * far too short for that: a grant waits on the Altana relay and a block, which measured
+ * around twenty seconds on testnet, so reusing it would abort requests that were about to
+ * succeed and leave the user unsure whether authority was granted.
+ */
+async function mutate<TSchema extends z.ZodType>(
+  path: string,
+  method: 'POST' | 'DELETE',
+  schema: TSchema,
+  body?: unknown,
+): Promise<z.output<TSchema>> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${env.apiBaseUrl}${path}`, {
+      method,
+      headers: {
+        accept: 'application/json',
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(CHAIN_WRITE_TIMEOUT_MS),
+    });
+  } catch {
+    throw new ApiError({
+      code: 'NETWORK_ERROR',
+      /*
+       * Deliberately does not say the grant failed. A timeout means we stopped waiting, not
+       * that the chain rejected anything, and the transaction may well confirm after this
+       * resolves. Telling someone their grant failed when it succeeded is worse than telling
+       * them to look.
+       */
+      message: 'The request did not complete. Reload to see whether it went through.',
+      status: 0,
+    });
+  }
+
+  if (!response.ok) {
+    throw await apiErrorFromResponse(response);
+  }
+
+  const payload: unknown = await response.json();
+  const parsed = schema.safeParse(payload);
+  if (!parsed.success) {
     throw new ApiError({
       code: 'CONTRACT_MISMATCH',
       message: 'The API response did not match the expected contract.',
@@ -199,5 +271,50 @@ export const api = {
       per_page: String(perPage),
     });
     return request(`/api/v1/search?${params.toString()}`, searchResponseSchema, signal);
+  },
+
+  /* -------------------------------- hiring -------------------------------- */
+
+  /**
+   * Authority granted to an agent, past and present.
+   *
+   * Not mocked. Every other endpoint has a fixture so the UI can be developed without a
+   * backend, and this one deliberately does not: a fake session would render a spend cap and
+   * an explorer link for authority that does not exist. In mock mode the panel reports hiring
+   * unavailable, which is true.
+   */
+  async listAgentSessions(id: string, signal?: AbortSignal): Promise<ListSessionsResponse> {
+    if (env.dataSource === 'mock') {
+      return { sessions: [], enabled: false, chainId: 97, explorerUrl: '', sandbox: false };
+    }
+    return request(
+      `/api/v1/agents/${encodeURIComponent(id)}/sessions`,
+      listSessionsResponseSchema,
+      signal,
+    );
+  },
+
+  /** Grants scoped authority. Writes to chain, so no mock path and no timeout shortcut. */
+  async grantSession(id: string, input: GrantSessionInput) {
+    return mutate(
+      `/api/v1/agents/${encodeURIComponent(id)}/sessions`,
+      'POST',
+      grantSessionResponseSchema,
+      {
+        spend_limit_wei: input.spendLimitWei,
+        spend_period: input.spendPeriod,
+        duration_minutes: input.durationMinutes,
+        allowed_targets: input.allowedTargets,
+      },
+    );
+  },
+
+  /** Revokes on chain. The session cannot act again once this resolves. */
+  async revokeSession(publicKey: string) {
+    return mutate(
+      `/api/v1/sessions/${encodeURIComponent(publicKey)}`,
+      'DELETE',
+      agentSessionSchema,
+    );
   },
 };

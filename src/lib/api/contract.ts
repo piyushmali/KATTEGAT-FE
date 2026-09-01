@@ -499,3 +499,108 @@ export interface ListAgentsParams {
   page?: number;
   perPage?: number;
 }
+
+/* --------------------------------- hiring --------------------------------- */
+
+/**
+ * Authority granted to an agent through an Altana session key.
+ *
+ * A hire, in this product, is not a payment. It is a grant of scoped, revocable authority:
+ * a spend ceiling over a rolling window, a list of contracts the agent may call, and an
+ * expiry. All three are enforced by the Altana account contract on BNB Chain rather than by
+ * KATTEGAT, so they hold whether or not this app is running.
+ */
+export const SPEND_PERIODS = ['minute', 'hour', 'day', 'week', 'month', 'year'] as const;
+
+export type SpendPeriod = (typeof SPEND_PERIODS)[number];
+
+export const agentSessionSchema = z
+  .object({
+    public_key: z.string(),
+    agent_id: z.string(),
+    wallet_address: z.string(),
+    /** Ceiling in wei, as a decimal string. Wei exceeds exact JS number range. */
+    spend_limit_wei: z.string(),
+    spend_period: z.string(),
+    /** Contracts the session may call. Never empty: the API refuses an open grant. */
+    allowed_calls: z.array(z.string()),
+    expires_at: z.string(),
+    granted_at: z.string(),
+    /** Null when the relay confirmed the grant without surfacing a receipt. */
+    granted_tx_hash: z.string().nullable(),
+    revoked_at: z.string().nullable(),
+    revoked_tx_hash: z.string().nullable(),
+    chain_id: z.number().int(),
+    /**
+     * Authority ends two ways and the UI must tell them apart. `revoked` means someone took
+     * it back; `expired` means nobody had to.
+     */
+    status: z.enum(['active', 'expired', 'revoked']),
+  })
+  .transform((raw) => ({
+    publicKey: raw.public_key,
+    agentId: raw.agent_id,
+    walletAddress: raw.wallet_address,
+    spendLimitWei: raw.spend_limit_wei,
+    spendPeriod: raw.spend_period,
+    allowedCalls: raw.allowed_calls,
+    expiresAt: raw.expires_at,
+    grantedAt: raw.granted_at,
+    grantedTxHash: raw.granted_tx_hash,
+    revokedAt: raw.revoked_at,
+    revokedTxHash: raw.revoked_tx_hash,
+    chainId: raw.chain_id,
+    status: raw.status,
+  }));
+
+export type AgentSession = z.infer<typeof agentSessionSchema>;
+
+export const grantSessionResponseSchema = z
+  .object({
+    data: agentSessionSchema,
+    meta: z.object({
+      keystore_registered: z.boolean(),
+      explorer_url: z.string(),
+    }),
+  })
+  .transform((raw) => ({
+    session: raw.data,
+    keystoreRegistered: raw.meta.keystore_registered,
+    explorerUrl: raw.meta.explorer_url,
+  }));
+
+export const listSessionsResponseSchema = z
+  .object({
+    data: z.array(agentSessionSchema),
+    meta: z.object({
+      enabled: z.boolean(),
+      chain_id: z.number().int(),
+      explorer_url: z.string(),
+      /**
+       * True when grants are made on a KATTEGAT-operated testnet account rather than the
+       * visitor's own wallet.
+       *
+       * Carried through the contract rather than hardcoded in the UI, so the disclosure
+       * cannot drift out of sync with what the backend is actually doing. If this ever goes
+       * false because a browser signer landed, the notice disappears on its own.
+       */
+      sandbox: z.boolean(),
+    }),
+  })
+  .transform((raw) => ({
+    sessions: raw.data,
+    enabled: raw.meta.enabled,
+    chainId: raw.meta.chain_id,
+    explorerUrl: raw.meta.explorer_url,
+    sandbox: raw.meta.sandbox,
+  }));
+
+export type ListSessionsResponse = z.infer<typeof listSessionsResponseSchema>;
+
+export interface GrantSessionInput {
+  /** Ceiling in wei, as a decimal string. Converted once, by the caller. */
+  spendLimitWei: string;
+  spendPeriod: SpendPeriod;
+  durationMinutes: number;
+  allowedTargets: string[];
+}
