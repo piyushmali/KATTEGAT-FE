@@ -276,7 +276,7 @@ export function AgentDetailView({ id }: { id: string }) {
 
           {/* Hiring is the page's destination, so it stays visible while scrolling. */}
           <div className="lg:sticky lg:top-20">
-            <HiringPanel agentName={agent.profile.name} />
+            <HiringPanel agentId={agent.identity.id} agentName={agent.profile.name} />
           </div>
         </div>
       </div>

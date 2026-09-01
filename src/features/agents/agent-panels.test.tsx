@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { listAgentsResponseSchema, listCategoriesResponseSchema } from '../../lib/api/contract';
 import { mockListAgents, mockListCategories } from '../../lib/api/mock-data';
 import { AgentFilters } from '../discovery/agent-filters';
 import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
-import { HiringPanel } from './hiring-panel';
+import { formatWei, HiringPanel } from './hiring-panel';
 import type { DiscoveryState } from '../discovery/use-discovery-params';
 
 /**
@@ -148,15 +149,28 @@ describe('ClassificationEvidence', () => {
 });
 
 describe('HiringPanel', () => {
-  it('frames hiring as scoped authority and never as wallet access', () => {
-    render(<HiringPanel agentName="Meridian Rebalancer" />);
+  /** The panel reads its state through TanStack Query, so it needs a client. */
+  const renderPanel = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
 
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <HiringPanel agentId="56:900001" agentName="Meridian Rebalancer" />
+      </QueryClientProvider>,
+    );
+  };
+
+  it('frames hiring as scoped authority and never as wallet access', () => {
     /*
      * Matched with a node-level predicate rather than a plain string, because "not" is
      * emphasised in its own <em> and a text-node query cannot see across that. The
      * element filter keeps the assertion on the single heading that makes the claim
      * instead of matching every ancestor that happens to contain the words.
      */
+    renderPanel();
+
     expect(
       screen.getByText(
         (_, element) =>
@@ -164,18 +178,46 @@ describe('HiringPanel', () => {
           /scoped authority,\s*not\s*wallet access/i.test(element.textContent ?? ''),
       ),
     ).toBeInTheDocument();
-    // All four bounds a user needs to understand before granting anything.
-    expect(screen.getByText(/spend ceiling/i)).toBeInTheDocument();
-    expect(screen.getByText(/session expiry/i)).toBeInTheDocument();
-    expect(screen.getByText(/permission scope/i)).toBeInTheDocument();
-    expect(screen.getByText(/revocation/i)).toBeInTheDocument();
   });
 
-  it('marks itself a preview and disables the action rather than faking it', () => {
-    render(<HiringPanel agentName="Meridian Rebalancer" />);
+  it('says hiring is switched off rather than showing a form that cannot work', async () => {
+    /*
+     * In mock mode the client reports `enabled: false`, because there is deliberately no
+     * fixture for a session: a fake grant would render a spend cap and an explorer link for
+     * authority that does not exist.
+     *
+     * What the panel must not do is render the form disabled with no explanation, which reads
+     * as a broken page rather than a configuration state.
+     */
+    renderPanel();
 
-    expect(screen.getByText(/^preview$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /hire agent/i })).toBeDisabled();
+    expect(await screen.findByText(/hiring is switched off/i)).toBeInTheDocument();
+    expect(screen.getByText(/^unavailable$/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /hire agent/i })).toBeNull();
+  });
+});
+
+describe('formatWei', () => {
+  /**
+   * The spend ceiling is the one number on the hiring panel that states a limit on someone's
+   * money, so it is converted with integer arithmetic. `Number(wei) / 1e18` is the obvious
+   * version and introduces a float exactly there.
+   */
+  it('converts without a float', () => {
+    expect(formatWei('10000000000000000')).toBe('0.01');
+    expect(formatWei('1000000000000000')).toBe('0.001');
+    expect(formatWei('100000000000000000')).toBe('0.1');
+    expect(formatWei('1000000000000000000')).toBe('1');
+  });
+
+  it('keeps precision a float would lose', () => {
+    // 18 significant digits: beyond what a double holds exactly.
+    expect(formatWei('1234567890123456789')).toBe('1.234567890123456789');
+  });
+
+  it('handles zero and very large values', () => {
+    expect(formatWei('0')).toBe('0');
+    expect(formatWei('123456789000000000000000000')).toBe('123456789');
   });
 });
 
