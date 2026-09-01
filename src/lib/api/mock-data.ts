@@ -62,6 +62,17 @@ type WireAgent = {
     source: string;
     computed_at: string;
   } | null;
+  jobs: {
+    total: number;
+    funded: number;
+    completed: number;
+    awaiting_release: number;
+    settled_raw: string;
+    escrowed_raw: string;
+    token_symbol: string;
+    token_decimals: number;
+    last_job_at: string | null;
+  } | null;
 };
 
 const SOURCE = 'mock:fixture';
@@ -69,7 +80,36 @@ const CLASSIFIER = 'rules-v1';
 
 const address = (seed: string): string => `0x${seed.repeat(40).slice(0, 40)}`;
 
-const MOCK_AGENTS: WireAgent[] = [
+/**
+ * Synthetic escrow, shaped like the real thing.
+ *
+ * `total` is always at least `funded`, because on the real kernel anyone can create a job naming
+ * any provider without paying for it, and the panel leads with the funded count for exactly that
+ * reason. A fixture where the two are equal would never exercise the distinction.
+ *
+ * Mocked at all, unlike sessions, because escrow is descriptive where a session is authority
+ * over someone's wallet: a synthetic spend cap with a working revoke button is dangerous, a
+ * synthetic delivery count in a mode that says SYNTHETIC at the top is not.
+ */
+const jobs = (
+  total: number,
+  funded: number,
+  completed: number,
+  settled: string,
+  escrowed: string,
+): WireAgent['jobs'] => ({
+  total,
+  funded,
+  completed,
+  awaiting_release: funded - completed,
+  settled_raw: settled,
+  escrowed_raw: escrowed,
+  token_symbol: 'U',
+  token_decimals: 18,
+  last_job_at: '2026-08-24T17:39:37.000Z',
+});
+
+const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
   {
     identity: {
       id: '56:900001',
@@ -423,6 +463,27 @@ const MOCK_AGENTS: WireAgent[] = [
   },
 ];
 
+/**
+ * Which fixtures have escrow history, in one place rather than spread through the agents above.
+ *
+ * Deliberately a minority, matching the real catalogue: 53 of 317,476 indexed agents have a job
+ * on the kernel. An escrow panel on every card would give a misleading impression of how common
+ * this is, and would never exercise the empty state that most agents actually show.
+ */
+const MOCK_JOB_EVIDENCE: Record<string, WireAgent['jobs']> = {
+  // Delivered repeatedly, with more jobs named than funded.
+  '56:900001': jobs(14, 9, 6, '600000000000000000', '900000000000000000'),
+  // Funded and delivered every time, a smaller history.
+  '56:900002': jobs(4, 4, 2, '120000000000000000', '240000000000000000'),
+  // Hired, delivered, and still inside the dispute window on two of them.
+  '56:900004': jobs(11, 5, 3, '300000000000000000', '500000000000000000'),
+};
+
+const MOCK_AGENTS: WireAgent[] = AGENTS_WITHOUT_JOBS.map((agent) => ({
+  ...agent,
+  jobs: MOCK_JOB_EVIDENCE[agent.identity.id] ?? null,
+}));
+
 const CATEGORY_META: { id: string; label: string; description: string }[] = [
   {
     id: 'rebalancing',
@@ -566,6 +627,64 @@ export function mockReputation(id: string) {
           ? ['Mock data source; not a live registry read.']
           : ['Mock data source; not a live registry read.', 'No client feedback recorded yet.'],
       explorer: null,
+    },
+  };
+}
+
+/**
+ * ERC-8183 job fixture, derived from the agent's tally rather than written beside it.
+ *
+ * Generated so the rows cannot contradict the summary. Writing both by hand is how a fixture
+ * ends up listing four jobs under a heading that says nine, which trains the UI against a state
+ * the real API never produces.
+ *
+ * Statuses are laid out to match the counts: completed first, then the ones still inside the
+ * dispute window, then the unfunded remainder that was named and never paid for.
+ */
+export function mockAgentJobs(id: string) {
+  const agent = MOCK_AGENTS.find((row) => row.identity.id === id);
+  if (!agent) return null;
+
+  const summary = agent.jobs;
+  const perJob = (index: number, status: string, submitted: boolean) => ({
+    job_id: 90_000 + index,
+    chain_id: agent.identity.chain_id,
+    status,
+    client_address: address('7a'),
+    // Unfunded jobs carry a budget that was set and never escrowed, as on chain.
+    budget_raw: '100000000000000000',
+    description: `Mock job ${String(index + 1)} for ${agent.profile.name}.`,
+    expired_at: '2026-09-02T17:39:25.000Z',
+    submitted_at: submitted ? '2026-08-24T17:39:37.000Z' : null,
+    deliverable_hash: submitted ? `0x${'ab'.repeat(32)}` : null,
+  });
+
+  const rows =
+    summary === null
+      ? []
+      : [
+          ...Array.from({ length: summary.completed }, (_, i) => perJob(i, 'COMPLETED', true)),
+          ...Array.from({ length: summary.awaiting_release }, (_, i) =>
+            perJob(summary.completed + i, 'SUBMITTED', true),
+          ),
+          ...Array.from({ length: summary.total - summary.funded }, (_, i) =>
+            perJob(summary.funded + i, 'OPEN', false),
+          ),
+        ];
+
+  return {
+    data: rows,
+    meta: {
+      chain_id: agent.identity.chain_id,
+      commerce_address: address('ea'),
+      explorer_url: 'https://bscscan.com',
+      token_symbol: 'U',
+      token_decimals: 18,
+      // Seven days, as on mainnet.
+      dispute_window_seconds: 604_800,
+      summary:
+        summary ??
+        jobs(0, 0, 0, '0', '0'),
     },
   };
 }

@@ -5,25 +5,30 @@ import {
   agentDetailResponseSchema,
   agentSessionSchema,
   ecosystemStatsResponseSchema,
+  listAgentJobsResponseSchema,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
   listSessionsResponseSchema,
+  recordJobResponseSchema,
   recordSessionResponseSchema,
   reputationResponseSchema,
   searchResponseSchema,
   sponsorGasResponseSchema,
   type Agent,
   type EcosystemStats,
+  type ListAgentJobsResponse,
   type ListAgentsParams,
   type ListAgentsResponse,
   type ListCategoriesResponse,
   type ListSessionsResponse,
   type RecordSessionInput,
+  type RecordJobResponse,
   type ReputationDetail,
   type SearchResponse,
 } from './contract';
 import {
   mockAgentDetail,
+  mockAgentJobs,
   mockListAgents,
   mockListCategories,
   mockReputation,
@@ -252,6 +257,52 @@ export const api = {
     return result.data;
   },
 
+  /**
+   * ERC-8183 jobs this agent was hired for.
+   *
+   * Its own request rather than part of the agent payload, for the same reason reputation is:
+   * the agent response carries the tally, which is what a card needs, and the job rows are only
+   * worth fetching once someone opens the agent.
+   */
+  async listAgentJobs(
+    id: string,
+    limit = 20,
+    signal?: AbortSignal,
+  ): Promise<ListAgentJobsResponse> {
+    if (env.dataSource === 'mock') {
+      const payload = mockAgentJobs(id);
+      if (!payload) {
+        throw new ApiError({
+          code: 'NOT_FOUND',
+          message: `No agent with id "${id}" has been indexed.`,
+          status: 404,
+        });
+      }
+      return listAgentJobsResponseSchema.parse(payload);
+    }
+    return request(
+      `/api/v1/agents/${encodeURIComponent(id)}/jobs?limit=${String(limit)}`,
+      listAgentJobsResponseSchema,
+      signal,
+    );
+  },
+
+  /**
+   * Reports an escrowed job the browser funded, so the backend can verify and record it.
+   *
+   * Sends only the job id. Everything else about a job is a fact on the kernel, and the backend
+   * reads it there rather than believing a client about money. Rejected with 400 when the job does
+   * not exist, names a different provider, or was never funded.
+   */
+  async recordAgentJob(agentId: string, jobId: number): Promise<RecordJobResponse> {
+    return mutate(
+      `/api/v1/agents/${encodeURIComponent(agentId)}/jobs`,
+      'POST',
+      recordJobResponseSchema,
+      { job_id: jobId },
+    );
+  },
+
   /** Marketplace-wide counts for the landing page. Real counts only. */
   async getStats(signal?: AbortSignal): Promise<EcosystemStats> {
     if (env.dataSource === 'mock') {
@@ -297,6 +348,22 @@ export const api = {
           explorerUrl: '',
           keystoreAddress: '',
           gasSponsored: false,
+          /*
+           * Unavailable, for the same reason sessions are. A synthetic escrow context would carry
+           * contract addresses that do not hold what the UI would claim, and the hire button built
+           * on them would send a real transaction to them.
+           */
+          escrow: {
+            available: false,
+            commerce: '0x0000000000000000000000000000000000000000',
+            router: '0x0000000000000000000000000000000000000000',
+            policy: '0x0000000000000000000000000000000000000000',
+            paymentToken: '0x0000000000000000000000000000000000000000',
+            tokenSymbol: 'U',
+            tokenDecimals: 18,
+            disputeWindowSeconds: 0,
+            allowedTargets: [],
+          },
         },
       };
     }

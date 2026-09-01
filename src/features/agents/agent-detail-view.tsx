@@ -13,6 +13,7 @@ import { useAgent, useAgentReputation } from '../discovery/use-agents';
 import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
+import { EscrowPanel } from './escrow-panel';
 import { HiringPanel } from './hiring-panel';
 import { OnChainIdentity } from './onchain-identity';
 
@@ -258,6 +259,15 @@ export function AgentDetailView({ id }: { id: string }) {
               metadataResolved={!metadataMissing}
             />
 
+            {/*
+             * Escrow above reputation, deliberately.
+             *
+             * Both answer "should I trust this", but a job is a budget that was locked on chain
+             * and released, while a reputation score is what a client said afterwards. When the
+             * two disagree, the payment is the better evidence, so it reads first.
+             */}
+            <EscrowPanel agent={agent} />
+
             <AgentReputationPanel
               agent={agent}
               live={reputationQuery.data ?? null}
@@ -276,7 +286,11 @@ export function AgentDetailView({ id }: { id: string }) {
 
           {/* Hiring is the page's destination, so it stays visible while scrolling. */}
           <div className="lg:sticky lg:top-20">
-            <HiringPanel agentId={agent.identity.id} agentName={agent.profile.name} />
+            <HiringPanel
+              agentId={agent.identity.id}
+              agentName={agent.profile.name}
+              providerAddress={agent.identity.walletAddress}
+            />
           </div>
         </div>
       </div>

@@ -18,6 +18,7 @@ export const agentKeys = {
   list: (params: ListAgentsParams) => ['agents', 'list', params] as const,
   detail: (id: string) => ['agents', 'detail', id] as const,
   reputation: (id: string) => ['agents', 'reputation', id] as const,
+  jobs: (id: string) => ['agents', 'jobs', id] as const,
   categories: () => ['categories'] as const,
   stats: () => ['stats'] as const,
   search: (query: string, page: number) => ['agents', 'search', query, page] as const,
@@ -53,6 +54,25 @@ export function useAgentReputation(id: string) {
     queryFn: ({ signal }) => api.getAgentReputation(id, signal),
     // Shorter than the default: this is the number a user is deciding on.
     staleTime: 15_000,
+  });
+}
+
+/**
+ * ERC-8183 jobs for one agent.
+ *
+ * Separate from {@link useAgent} because the agent payload already carries the tally, which is
+ * all a card needs. The individual jobs are only worth fetching once someone opens the profile.
+ *
+ * Served from the backend's mirror of the escrow kernel rather than read live, so this is cached
+ * like a list rather than like the registry read above: a job's status changes when a provider
+ * delivers or a dispute window closes, on the order of days, not seconds.
+ */
+export function useAgentJobs(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: agentKeys.jobs(id),
+    queryFn: ({ signal }) => api.listAgentJobs(id, 20, signal),
+    enabled,
+    staleTime: 60_000,
   });
 }
 

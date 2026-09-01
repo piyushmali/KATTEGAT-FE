@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowUpRight, ShieldQuestion } from 'lucide-react';
+import { ArrowUpRight, Coins, ShieldQuestion } from 'lucide-react';
 import { AgentImage } from '../../components/ui/agent-image';
 import { Badge, StatusDot } from '../../components/ui/badge';
 import {
@@ -49,6 +49,30 @@ function primaryOf(categories: AgentCategoryAssignment[]): AgentCategoryAssignme
   return categories.find((entry) => entry.isPrimary) ?? categories[0] ?? null;
 }
 
+/**
+ * The escrow line for the footer, or null when there is nothing honest to put there.
+ *
+ * Three cases, not two. An agent can have escrow funded against it and nothing released yet,
+ * because delivered work is held for the dispute window — seven days on mainnet. Leading with
+ * "0 U paid" in that case would read as a failure to deliver when it is a timer running, so the
+ * funded count leads instead and the amount waits until it has actually moved.
+ */
+function describePaidWork(jobs: Agent['jobs']): { headline: string; detail: string } | null {
+  if (jobs === null || jobs.funded === 0) return null;
+
+  if (jobs.completed === 0) {
+    return {
+      headline: `${String(jobs.funded)} funded`,
+      detail: jobs.awaitingRelease > 0 ? 'delivered, in dispute window' : 'escrow held',
+    };
+  }
+
+  return {
+    headline: `${jobs.settled} ${jobs.tokenSymbol}`,
+    detail: `paid · ${String(jobs.completed)} ${jobs.completed === 1 ? 'job' : 'jobs'}`,
+  };
+}
+
 export function AgentCard({ agent }: { agent: Agent }) {
   const primary = primaryOf(agent.categories);
   const secondaryCount = agent.categories.filter((entry) => !entry.isPrimary).length;
@@ -77,6 +101,8 @@ export function AgentCard({ agent }: { agent: Agent }) {
   const traits = TRAIT_PRIORITY.filter((entry) => agent.profile.traitTags.includes(entry.trait));
   const capabilities = agent.profile.capabilities.slice(0, 3);
   const extraCapabilities = agent.profile.capabilities.length - capabilities.length;
+
+  const paidWork = describePaidWork(agent.jobs);
 
   return (
     <article
@@ -229,6 +255,26 @@ export function AgentCard({ agent }: { agent: Agent }) {
       {/* ------------------------- evidence / footer ------------------------- */}
       <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <div className="min-w-0">
+          {/*
+           * Escrow leads the evidence footer, above the score, and only when a job was actually
+           * funded. It is the strongest thing this grid can say about an agent: a score is what a
+           * client wrote afterwards, this is a budget that was locked on chain.
+           *
+           * Gated on `funded` rather than on any job existing, because creating a job costs
+           * nothing and needs no agreement from the agent, so an unfunded one is not a signal.
+           *
+           * Rare by nature — a few dozen agents in the registry have any — so it does not
+           * compete with the score for space in practice. Which is also why it is worth
+           * shouting about when it is there.
+           */}
+          {paidWork ? (
+            <p className="flex items-baseline gap-1.5 text-2xs text-amber/90">
+              <Coins className="size-3 shrink-0 self-center" aria-hidden="true" />
+              <span className="display tabular text-sm text-amber-bright">{paidWork.headline}</span>
+              <span className="truncate text-3xs text-amber/70">{paidWork.detail}</span>
+            </p>
+          ) : null}
+
           {score !== null ? (
             <div className="flex items-baseline gap-1.5">
               {/* 0–100, per ERC-8004. The unit is stated so the figure cannot be

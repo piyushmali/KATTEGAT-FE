@@ -2,13 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api/client';
-import type { SpendPeriod } from '../../lib/api/contract';
+import type { EscrowContext, SpendPeriod } from '../../lib/api/contract';
 import {
+  commissionWork,
   grantAuthority,
   loadCredential,
   openAuthority,
   revokeAuthority,
 } from '../../lib/web3/agent-authority';
+import { agentKeys } from '../discovery/use-agents';
 
 /**
  * Hiring an agent, and taking the authority back.
@@ -139,6 +141,105 @@ export function useRevokeAgent(agentId: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: hiringKeys.sessions(agentId) });
+    },
+  });
+}
+
+export interface CommissionInput {
+  networkName: string;
+  escrow: EscrowContext;
+  /** The agent's own wallet address, which is how the kernel names it as provider. */
+  providerAddress: `0x${string}`;
+  task: string;
+  /** Raw payment-token units. Zero is a valid job that moves no tokens. */
+  budgetRaw: string;
+  /** Native ceiling for the session, covering the relay's fee. */
+  spendLimitWei: string;
+  durationMinutes: number;
+  gasSponsored: boolean;
+}
+
+/**
+ * Commissions escrowed work, then reports it.
+ *
+ * Same order as granting authority, and load-bearing for the same reason: the chain first, then
+ * the backend. Reversed, our database would claim a funded job that does not exist.
+ *
+ * The backend cannot do the first half. Funding escrow spends the user's own tokens, so the batch
+ * is signed by a session key the user's passkey just authorised, in their browser. What comes back
+ * here is a job id, and the backend goes and reads the kernel to see whether it says what we say
+ * it does.
+ */
+export function useCommissionWork(agentId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CommissionInput) => {
+      if (!input.escrow.available) {
+        /*
+         * Refused before any prompt. No whitelisted policy on this chain means `registerJob`
+         * reverts and funding reverts after it, so the biometric would be asked for a transaction
+         * that cannot succeed.
+         */
+        throw new Error('Escrow hiring is unavailable on this network right now.');
+      }
+
+      const authority = await openAuthority(input.networkName);
+
+      /*
+       * Gas before the prompt, for the same reason as a grant: this is a transaction, and
+       * discovering an empty wallet after the user has approved with a biometric is the worst
+       * place to find out. Tolerated on failure, since they may already hold enough.
+       */
+      if (input.gasSponsored) {
+        try {
+          await api.sponsorGas(agentId, authority.walletAddress);
+        } catch {
+          // A convenience. The hire can still succeed if the wallet is already funded.
+        }
+      }
+
+      const job = await commissionWork({
+        networkName: input.networkName,
+        credential: authority.credential,
+        escrow: {
+          commerce: input.escrow.commerce,
+          router: input.escrow.router,
+          policy: input.escrow.policy,
+          paymentToken: input.escrow.paymentToken,
+          disputeWindowSeconds: input.escrow.disputeWindowSeconds,
+        },
+        provider: input.providerAddress,
+        task: input.task,
+        budgetRaw: BigInt(input.budgetRaw),
+        spendLimitWei: BigInt(input.spendLimitWei),
+        durationMinutes: input.durationMinutes,
+      });
+
+      /*
+       * Record the session as well as the job. The key that signed this hire holds authority until
+       * it expires, so leaving it unrecorded would mean the user could not see or revoke it, which
+       * is the one thing this product promises about agent authority.
+       */
+      await api.recordSession(agentId, {
+        walletAddress: job.walletAddress,
+        publicKey: job.sessionPublicKey,
+        spendLimitWei: input.spendLimitWei,
+        spendPeriod: 'day',
+        allowedTargets: input.escrow.allowedTargets,
+        expiresAtUnix: job.expiryUnix,
+        grantedTxHash: null,
+      });
+
+      return api.recordAgentJob(agentId, job.jobId);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: hiringKeys.sessions(agentId) }),
+        /* The escrow panel reads this, and a new job has just landed in it. */
+        queryClient.invalidateQueries({ queryKey: agentKeys.jobs(agentId) }),
+        queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) }),
+      ]);
     },
   });
 }

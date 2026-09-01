@@ -73,6 +73,17 @@ describe('agent contract', () => {
         source: 'test',
         computed_at: '2026-01-01T00:00:00.000Z',
       },
+      jobs: {
+        total: 4,
+        funded: 3,
+        completed: 1,
+        awaiting_release: 1,
+        settled_raw: '3000000000000000000',
+        escrowed_raw: '6000000000000000000',
+        token_symbol: 'U',
+        token_decimals: 18,
+        last_job_at: '2026-01-02T00:00:00.000Z',
+      },
     });
 
     expect(parsed.identity.chainId).toBe(56);
@@ -90,6 +101,18 @@ describe('agent contract', () => {
     // The decoded score must survive the mapping, not the raw fixed-point value.
     expect(parsed.reputation?.score).toBeCloseTo(4.25, 6);
     expect(parsed.reputation?.summaryDecimals).toBe(2);
+
+    /*
+     * Escrow amounts arrive as raw 18-decimal integers and are formatted once, here, so no
+     * component divides by its own power of ten. 3e18 raw is 3 U released; the escrowed 6 U is
+     * higher because a fourth job was named and never funded, and that gap is the figure a
+     * naive sum would destroy.
+     */
+    expect(parsed.jobs?.settled).toBe('3');
+    expect(parsed.jobs?.escrowed).toBe('6');
+    expect(parsed.jobs?.settledRaw).toBe('3000000000000000000');
+    expect(parsed.jobs?.funded).toBe(3);
+    expect(parsed.jobs?.total).toBe(4);
   });
 
   it('rejects a response missing a required field', () => {

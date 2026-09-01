@@ -7,7 +7,10 @@ import { AgentFilters } from '../discovery/agent-filters';
 import { AgentInterface } from './agent-interface';
 import { AgentReputationPanel } from './agent-reputation-panel';
 import { ClassificationEvidence } from './classification-evidence';
+import { CommissionForm } from './commission-form';
+import { EscrowPanel } from './escrow-panel';
 import { formatWei, HiringPanel } from './hiring-panel';
+import type { HiringContext } from '../../lib/api/contract';
 import type { DiscoveryState } from '../discovery/use-discovery-params';
 
 /**
@@ -157,7 +160,11 @@ describe('HiringPanel', () => {
 
     return render(
       <QueryClientProvider client={queryClient}>
-        <HiringPanel agentId="56:900001" agentName="Meridian Rebalancer" />
+        <HiringPanel
+          agentId="56:900001"
+          agentName="Meridian Rebalancer"
+          providerAddress={null}
+        />
       </QueryClientProvider>,
     );
   };
@@ -544,5 +551,150 @@ describe('AgentInterface', () => {
     renderFor('56:900006');
     expect(screen.queryByText(/x402/i)).toBeNull();
     expect(screen.queryByText(/pay per call/i)).toBeNull();
+  });
+});
+
+describe('EscrowPanel', () => {
+  const renderPanel = (id: string) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <EscrowPanel agent={byId(id)} />
+      </QueryClientProvider>,
+    );
+  };
+
+  it('presents no escrow history as nothing recorded, not a poor record', () => {
+    /*
+     * The state almost every agent is in: 53 of 317,476 indexed agents have a job on the kernel.
+     * If this ever reads as a failure, the panel damages the overwhelming majority of the
+     * catalogue for having done nothing wrong.
+     */
+    renderPanel('56:900003');
+
+    expect(screen.getByText(/never hired through on-chain escrow/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing recorded yet/i)).toBeInTheDocument();
+    // A zero here would read as "delivered nothing", which is a different and worse claim.
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+
+  it('leads with escrow actually released rather than with jobs created', () => {
+    // Meridian: 14 jobs named, 9 funded, 6 released for 0.6 U.
+    renderPanel('56:900001');
+
+    expect(screen.getByText('0.6')).toBeInTheDocument();
+    expect(screen.getByText(/released to this agent/i)).toBeInTheDocument();
+    // The funded count is the denominator on show, not the total.
+    expect(screen.getByText('9')).toBeInTheDocument();
+  });
+
+  it('says plainly that unfunded jobs are excluded from every figure', () => {
+    /*
+     * The honesty rule that matters most here. Creating a job and naming any provider costs
+     * nothing and needs no agreement from that agent, so 5 of Meridian's 14 could have been
+     * opened by anyone. Without this sentence the headline count looks unexplainably smaller
+     * than the job list.
+     */
+    renderPanel('56:900001');
+
+    expect(screen.getByText(/never funded/i)).toBeInTheDocument();
+    expect(screen.getByText(/costs nothing/i)).toBeInTheDocument();
+  });
+
+  it('offers the escrow contract for independent verification', () => {
+    renderPanel('56:900001');
+
+    // The point of showing escrow over a rating is that a stranger can check it.
+    expect(screen.getByText(/erc-8183 escrow/i)).toBeInTheDocument();
+  });
+});
+
+const escrowContext = (over: Partial<HiringContext['escrow']> = {}): HiringContext => ({
+  enabled: true,
+  chainId: 97,
+  network: 'bnb-testnet',
+  isMainnet: false,
+  nativeSymbol: 'tBNB',
+  explorerUrl: 'https://testnet.bscscan.com',
+  keystoreAddress: '0x6b8361C29d05D498b1a12B54A37310f94171E94A',
+  gasSponsored: true,
+  escrow: {
+    available: true,
+    commerce: '0xa206c0517B6371C6638CD9e4a42Cc9f02A33B0DE',
+    router: '0xD7d36D66d2F1B608A0F943f722D27e3744f66F25',
+    policy: '0xd6a4217588F6B1F5657a92A3e94E6422aD771cEA',
+    paymentToken: '0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565',
+    tokenSymbol: 'U',
+    tokenDecimals: 18,
+    disputeWindowSeconds: 900,
+    allowedTargets: [
+      '0xa206c0517B6371C6638CD9e4a42Cc9f02A33B0DE',
+      '0xD7d36D66d2F1B608A0F943f722D27e3744f66F25',
+      '0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565',
+    ],
+    ...over,
+  },
+});
+
+/**
+ * Commissioning work spends the user's money, so the states that matter are the ones where it
+ * must not offer a button.
+ */
+describe('CommissionForm', () => {
+  const renderForm = (props: Partial<Parameters<typeof CommissionForm>[0]> = {}) => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <CommissionForm
+          agentId="56:900001"
+          agentName="Meridian Rebalancer"
+          providerAddress="0x72070faa1e33d7f8b31397bc8da65be2b1f6281f"
+          context={escrowContext()}
+          {...props}
+        />
+      </QueryClientProvider>,
+    );
+  };
+
+  it('frames the payment as held by the contract rather than by KATTEGAT', () => {
+    renderForm();
+    expect(screen.getByText(/held by the escrow contract, not by/i)).toBeInTheDocument();
+  });
+
+  it('refuses to offer a hire when no dispute policy is accepted on this network', () => {
+    /*
+     * The measured state of BSC testnet against the SDK's pinned policy. registerJob reverts and
+     * funding reverts after it, so a button here would ask for a biometric to send a transaction
+     * that cannot succeed.
+     */
+    renderForm({ context: escrowContext({ available: false }) });
+
+    expect(screen.getByText(/no accepted dispute policy/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /fund the job/i })).not.toBeInTheDocument();
+  });
+
+  it('refuses when the agent published no wallet to pay', () => {
+    // The kernel names providers by address, so there is nothing to escrow against.
+    renderForm({ providerAddress: null });
+
+    expect(screen.getByText(/publishes no payment wallet/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /fund the job/i })).not.toBeInTheDocument();
+  });
+
+  it('presents a zero budget as a real job rather than an unset field', () => {
+    /*
+     * Documented in the protocol: zero moves no tokens and skips the approve, which is how the
+     * rail can be exercised without holding any. Reading as "you forgot something" would hide a
+     * legitimate option.
+     */
+    renderForm();
+    expect(screen.getByText(/zero moves no tokens/i)).toBeInTheDocument();
+  });
+
+  it('states the dispute window, so escrow held after delivery is expected', () => {
+    renderForm();
+    expect(screen.getByText(/15 minutes before the escrow can be released/i)).toBeInTheDocument();
   });
 });
