@@ -10,7 +10,8 @@ import { describeError } from '../../lib/api/errors';
 import { formatDate } from '../../lib/utils/format';
 import { truncateAddress } from '../../lib/web3/chain';
 import type { AgentSession, SpendPeriod } from '../../lib/api/contract';
-import { useAgentSessions, useGrantSession, useRevokeSession } from './use-hiring';
+import { supportsPasskeys } from '../../lib/web3/agent-authority';
+import { useAgentSessions, useHireAgent, useRevokeAgent } from './use-hiring';
 
 /**
  * Hiring: granting an agent scoped authority, and taking it back.
@@ -27,13 +28,23 @@ import { useAgentSessions, useGrantSession, useRevokeSession } from './use-hirin
  * half of the feature. Revocation is one transaction and takes effect immediately, and it is
  * given the same prominence as the grant rather than filed under settings.
  *
- * WHAT IS A SANDBOX, AND WHY IT SAYS SO
+ * WHERE THE AUTHORITY LIVES
  *
- * The grant, the Keystore registration and the revocation are all real transactions on BSC
- * testnet. What is not real is whose account is at stake: the admin signer is a
- * KATTEGAT-operated key, so a visitor exercises the true mechanism against a sandbox rather
- * than their own wallet. `sandbox` comes from the API rather than being hardcoded here, so
- * the notice disappears by itself the day a browser signer makes it untrue.
+ * In the user's device, as a passkey in its secure hardware. Both the grant and the revocation
+ * are signed here in the browser behind a biometric prompt, and KATTEGAT's backend holds no key
+ * that could do either. It verifies the result against the public Altana Keystore and keeps an
+ * index; if our servers were compromised, nobody's agent authority would change.
+ *
+ * An earlier version of this panel had the backend sign on the user's behalf and called it a
+ * sandbox. That was custodial with a disclaimer, and it also made wallet connect pointless.
+ * Worth recording, because "we hold the key but only on testnet" is an easy thing to talk
+ * yourself into.
+ *
+ * NOTHING HERE HARDCODES A CHAIN
+ *
+ * Network name, native token symbol, explorer host and whether gas is sponsored all arrive from
+ * the API. Going live is a backend environment change and this panel follows it, including the
+ * copy that warns about real funds.
  */
 
 const PRESET_CAPS = [
@@ -72,14 +83,15 @@ const SPEND_PERIOD: SpendPeriod = 'day';
 
 export function HiringPanel({ agentId, agentName }: { agentId: string; agentName: string }) {
   const sessionsQuery = useAgentSessions(agentId);
-  const grant = useGrantSession(agentId);
-  const revoke = useRevokeSession(agentId);
+  const hire = useHireAgent(agentId);
+  const revoke = useRevokeAgent(agentId);
 
   const [capWei, setCapWei] = useState<string>(PRESET_CAPS[1].wei);
   const [durationMinutes, setDurationMinutes] = useState<number>(PRESET_DURATIONS[0].minutes);
   const [targets, setTargets] = useState<string[]>([PRESET_TARGETS[0].address]);
 
   const data = sessionsQuery.data;
+  const context = data?.context;
   const sessions = data?.sessions ?? [];
   const live = sessions.filter((session) => session.status === 'active');
   const past = sessions.filter((session) => session.status !== 'active');
@@ -97,7 +109,7 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
       <PanelHeader
         title="Hiring"
         action={
-          data?.enabled ? (
+          context?.enabled ? (
             <Badge tone="positive">BNB testnet</Badge>
           ) : (
             <Badge tone="outline">Unavailable</Badge>
@@ -123,7 +135,19 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
             <Skeleton className="h-3 w-full" />
             <Skeleton className="h-3 w-4/5" />
           </div>
-        ) : !data?.enabled ? (
+        ) : context?.enabled && !supportsPasskeys() ? (
+          /*
+           * Checked before offering the form rather than at the biometric prompt, which is the
+           * point where the user has already decided to hire. WebAuthn needs a secure context
+           * and a platform authenticator, so http:// and some embedded browsers cannot hold
+           * authority at all.
+           */
+          <p className="mt-2.5 text-xs leading-6 text-ink-muted">
+            This browser cannot hold agent authority. Hiring needs a passkey, which requires a
+            secure (https) connection and a device authenticator such as Face ID, Touch ID or
+            Windows Hello.
+          </p>
+        ) : !context?.enabled ? (
           /*
            * No signer configured, or mock mode. Says so plainly rather than showing a form
            * that cannot work: a disabled control with no explanation reads as a broken page.
@@ -140,17 +164,38 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
               running, and you can revoke in one transaction at any time.
             </p>
 
-            {data.sandbox ? (
+            {/*
+             * The custody statement, and the most important sentence here.
+             *
+             * An earlier version of this panel said the opposite: the backend held an admin key
+             * and signed on the user's behalf, and this notice called it a sandbox. That was
+             * describing the problem rather than fixing it. Authority now lives in the user's
+             * device and our servers cannot grant or revoke anything, which is worth stating
+             * plainly because it is the difference between this product and most of its
+             * competitors.
+             */}
+            <p className="mt-4 rounded-control border border-line bg-surface-inset px-3.5 py-2.5 text-2xs leading-5 text-ink-muted">
+              Your authority stays in this device. Hiring creates a passkey held in your
+              hardware, and every grant and revocation is signed there behind Face ID, Touch ID
+              or Windows Hello. KATTEGAT&rsquo;s servers never hold it and cannot grant or
+              revoke on your behalf.
+              {context.gasSponsored ? ' We cover the gas for your first grant.' : ''}
+            </p>
+
+            {context.isMainnet ? (
               <p
                 role="note"
-                className="mt-4 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs leading-5 text-caution"
+                className="mt-2.5 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs leading-5 text-caution"
               >
-                Sandbox. The grant, the Keystore entry and the revocation are real transactions
-                on BSC testnet, but they act on a KATTEGAT-operated account rather than your
-                connected wallet. You are exercising the real mechanism, not risking your own
-                funds.
+                Mainnet. Real funds. The spend ceiling below is the most this agent can ever
+                move, so set it to an amount you would be comfortable losing.
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-2.5 text-2xs leading-5 text-ink-faint">
+                {context.network} ({context.nativeSymbol}). Test network, so no real funds are at
+                risk, but every transaction below is genuine and verifiable on chain.
+              </p>
+            )}
 
             {/* ------------------------------ the terms ------------------------------ */}
             <div className="mt-6 space-y-5">
@@ -168,7 +213,7 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
                         setCapWei(preset.wei);
                       }}
                     >
-                      {preset.label} tBNB
+                      {preset.label} {context.nativeSymbol}
                     </ChoiceChip>
                   ))}
                 </div>
@@ -249,28 +294,31 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
                 variant="primary"
                 size="lg"
                 className="w-full"
-                disabled={targets.length === 0 || grant.isPending}
+                disabled={targets.length === 0 || hire.isPending}
                 onClick={() => {
-                  grant.mutate({
+                  if (!context) return;
+                  hire.mutate({
+                    networkName: context.network,
                     spendLimitWei: capWei,
                     spendPeriod: SPEND_PERIOD,
                     durationMinutes,
                     allowedTargets: targets,
+                    gasSponsored: context.gasSponsored,
                   });
                 }}
               >
-                {grant.isPending ? <InlineSpinner label="Granting on chain" /> : 'Hire agent'}
+                {hire.isPending ? <InlineSpinner label="Waiting for your approval" /> : 'Hire agent'}
               </Button>
 
-              {grant.isPending ? (
+              {hire.isPending ? (
                 <p className="text-2xs leading-5 text-ink-faint">
-                  Waiting on BNB Chain. This takes a few seconds and settles in a block.
+                  Approve with your device, then this settles in a block. A few seconds.
                 </p>
               ) : null}
 
-              {grant.isError ? (
+              {hire.isError ? (
                 <p role="alert" className="text-2xs leading-5 text-critical">
-                  {describeError(grant.error).title}. {describeError(grant.error).detail}
+                  {describeError(hire.error).title}. {describeError(hire.error).detail}
                 </p>
               ) : null}
             </div>
@@ -286,11 +334,16 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
                 <SessionRow
                   key={session.publicKey}
                   session={session}
-                  explorerUrl={data?.explorerUrl ?? ''}
+                  explorerUrl={context?.explorerUrl ?? ''}
+                  nativeSymbol={context?.nativeSymbol ?? ''}
                   onRevoke={() => {
-                    revoke.mutate(session.publicKey);
+                    if (!context) return;
+                    revoke.mutate({
+                      publicKey: session.publicKey,
+                      networkName: context.network,
+                    });
                   }}
-                  isRevoking={revoke.isPending && revoke.variables === session.publicKey}
+                  isRevoking={revoke.isPending && revoke.variables?.publicKey === session.publicKey}
                 />
               ))}
             </ul>
@@ -318,7 +371,7 @@ export function HiringPanel({ agentId, agentName }: { agentId: string; agentName
                   </span>
                   <TxLink
                     hash={session.revokedTxHash ?? session.grantedTxHash}
-                    explorerUrl={data?.explorerUrl ?? ''}
+                    explorerUrl={context?.explorerUrl ?? ''}
                   />
                 </li>
               ))}
@@ -362,11 +415,13 @@ function ChoiceChip({
 function SessionRow({
   session,
   explorerUrl,
+  nativeSymbol,
   onRevoke,
   isRevoking,
 }: {
   session: AgentSession;
   explorerUrl: string;
+  nativeSymbol: string;
   onRevoke: () => void;
   isRevoking: boolean;
 }) {
@@ -374,13 +429,13 @@ function SessionRow({
    * Wei to a decimal string without a float. `Number(wei) / 1e18` would be a rounding
    * decision in the field that describes someone's spending limit.
    */
-  const capTBNB = formatWei(session.spendLimitWei);
+  const capNative = formatWei(session.spendLimitWei);
 
   return (
     <li className="rounded-card border border-line bg-surface-inset p-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-xs font-medium text-ink">
-          {capTBNB} tBNB<span className="text-ink-faint"> / {session.spendPeriod}</span>
+          {capNative} {nativeSymbol}<span className="text-ink-faint"> / {session.spendPeriod}</span>
         </span>
         <Badge tone="positive">Active</Badge>
       </div>
