@@ -6,7 +6,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { AgentImage } from '../../components/ui/agent-image';
 import { Skeleton } from '../../components/ui/states';
 import { CATEGORY_LABELS } from '../../lib/api/contract';
-import { formatDate } from '../../lib/utils/format';
+import { firstSentence, formatDate } from '../../lib/utils/format';
 import { useAgents } from '../discovery/use-agents';
 
 /**
@@ -77,7 +77,13 @@ export function AgentPreview() {
                 <li key={agent.identity.id}>
                   <Link
                     href={`/agents/${encodeURIComponent(agent.identity.id)}`}
-                    className="group flex items-center gap-4 py-4 transition-colors duration-300 hover:bg-surface-raised/40"
+                    /*
+                     * A hairline that lights up on approach, rather than only a fill change.
+                     * Six near-identical rows need a hover that says which one is armed, and
+                     * a faint background shift on a dark ground is easy to miss — the metal
+                     * edge on the left is the same language the lead panels use.
+                     */
+                    className="group relative flex items-center gap-4 py-5 pl-3.5 transition-colors duration-300 before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-amber-dim before:opacity-0 before:transition-opacity before:duration-300 hover:bg-surface-raised/40 hover:before:opacity-100"
                   >
                     <AgentImage
                       agentId={agent.identity.id}
@@ -96,8 +102,18 @@ export function AgentPreview() {
                       <p className="display truncate text-base text-ink transition-colors duration-300 group-hover:text-amber-bright">
                         {agent.profile.name}
                       </p>
-                      <p className="mt-1 truncate text-xs text-ink-muted">
-                        {agent.profile.description ?? 'No description published'}
+                      {/*
+                       * First sentence, then clamp as a safety net.
+                       *
+                       * These are operator-written and frequently run on for two or three
+                       * sentences, so a plain `truncate` ended every row on a severed word —
+                       * "for PancakeSwap concentra…". A clipped word reads as a rendering
+                       * fault; a complete sentence reads as an edit.
+                       */}
+                      <p className="mt-1.5 truncate text-xs text-ink-muted">
+                        {agent.profile.description === null
+                          ? 'No description published'
+                          : firstSentence(agent.profile.description)}
                       </p>
                     </div>
 

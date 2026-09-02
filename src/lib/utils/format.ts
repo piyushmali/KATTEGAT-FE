@@ -62,3 +62,40 @@ export function formatDate(value: string | null | undefined): string | null {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : DATE.format(date);
 }
+
+/**
+ * The opening sentence of a description, for places that can only afford one line.
+ *
+ * Exists because `truncate` was cutting operator-written prose mid-word, and the arrivals
+ * list is where that showed worst: registration descriptions are frequently two or three
+ * run-on sentences, so every row ended in a severed fragment like "for PancakeSwap
+ * concentra…". A clipped word reads as a rendering fault. A complete sentence reads as an
+ * edit, and the first sentence of these descriptions is almost always the summary — the
+ * operator wrote it that way because that is how people write.
+ *
+ * `minLength` is the whole reason this is not a one-liner. Splitting on the first period
+ * breaks on the abbreviations and version numbers this data is full of: "SmartSentinels
+ * v1. Keeps ranges…" would surrender at "SmartSentinels v1." and say nothing. So it keeps
+ * looking until a boundary lands far enough in to carry meaning, and returns the text
+ * untouched if none does — callers still clamp, so an unpunctuated wall of text degrades
+ * to the old behaviour rather than to nothing.
+ *
+ * 32 characters, arrived at from both directions. "SmartSentinels v1." is 18 and has to be
+ * rejected; "Keeps ranges in line when the market moves." is 43 and has to be accepted. The
+ * first draft used 48 and swallowed that second one whole, which is the failure this
+ * function was written to prevent, so the threshold sits nearer the fragments it is
+ * screening out than the sentences it is looking for.
+ */
+export function firstSentence(text: string, minLength = 32): string {
+  const trimmed = text.trim();
+  // Lookahead rather than a consuming group, so `.index` stays the punctuation itself.
+  const boundary = /[.!?](?=\s|$)/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = boundary.exec(trimmed)) !== null) {
+    const end = match.index + 1;
+    if (end >= minLength) return trimmed.slice(0, end);
+  }
+
+  return trimmed;
+}

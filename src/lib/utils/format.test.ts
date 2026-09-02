@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCount, formatDate, formatScore } from './format';
+import { firstSentence, formatCount, formatDate, formatScore } from './format';
 
 /**
  * These exist to catch a locale regression, which is the failure mode that made the
@@ -66,5 +66,53 @@ describe('formatScore', () => {
     // A client rating an agent 0 is evidence. Only `null` means no evidence, and that
     // never reaches this function.
     expect(formatScore(0)).toBe('0');
+  });
+});
+
+describe('firstSentence', () => {
+  it('returns the opening sentence, punctuation included', () => {
+    expect(
+      firstSentence('Keeps ranges in line when the market moves. Reports every rebalance.'),
+    ).toBe('Keeps ranges in line when the market moves.');
+  });
+
+  it('does not surrender to a version number or abbreviation', () => {
+    /*
+     * The case this function exists for. A naive split on the first period returns
+     * "SmartSentinels v1." and throws away the description.
+     */
+    const text = 'SmartSentinels v1. Rebalances PancakeSwap concentrated liquidity on BNB Chain.';
+
+    expect(firstSentence(text)).toBe(text);
+  });
+
+  it('keeps scanning past a short boundary to the next usable one', () => {
+    const text = 'Runs v2. Short. Watches a leveraged lending position and warns before liquidation. Then stops.';
+
+    expect(firstSentence(text)).toBe(
+      'Runs v2. Short. Watches a leveraged lending position and warns before liquidation.',
+    );
+  });
+
+  it('returns unpunctuated text untouched, for the caller to clamp', () => {
+    const text = 'a description with no sentence ending at all that simply runs on and on';
+
+    expect(firstSentence(text)).toBe(text);
+  });
+
+  it('handles a question or exclamation as a boundary', () => {
+    expect(firstSentence('Wondering whether your position is still in range? We check it.')).toBe(
+      'Wondering whether your position is still in range?',
+    );
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(firstSentence('   Keeps a portfolio at its intended shape always.  ')).toBe(
+      'Keeps a portfolio at its intended shape always.',
+    );
+  });
+
+  it('leaves a single short sentence alone rather than returning nothing', () => {
+    expect(firstSentence('Trades.')).toBe('Trades.');
   });
 });

@@ -166,9 +166,23 @@ export default function HomePage() {
             </Reveal>
           </div>
 
-          {/* Real counts, on a hairline. Keeps the fold evidential. */}
+          {/*
+           * Real counts, closing the hero on its own waterline. Keeps the fold evidential.
+           *
+           * This used to sit on a flat `border-t` with the next section's rule about a
+           * hundred pixels below it, and two arbitrary hairlines that close together turn
+           * whatever is between them into a leftover band rather than part of anything. The
+           * strip stopped reading as evidence under the headline and started reading as a
+           * widget in the gap.
+           *
+           * Now the seam is `horizon` — the same luminous rule the artwork draws across the
+           * water above it and the footer closes the site on — and it belongs to the hero
+           * rather than dividing it from what follows. The categories section drops its own
+           * top border to match, so there is one meaningful edge here instead of two
+           * competing ones.
+           */}
           <Reveal delay={340}>
-            <div className="mt-14 border-t border-line pt-6 lg:mt-20">
+            <div className="horizon mt-12 pb-7 lg:mt-16">
               <HeroIndexStrip />
             </div>
           </Reveal>
@@ -193,7 +207,8 @@ export default function HomePage() {
        * Recency and ecosystem totals are context; choosing a category is the actual task, so
        * it goes first.
        */}
-      <section aria-labelledby="categories" className="border-t border-line">
+      {/* No top rule: the hero closes itself on the waterline seam above. */}
+      <section aria-labelledby="categories">
         <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
