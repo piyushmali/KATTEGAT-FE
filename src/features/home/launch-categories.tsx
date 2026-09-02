@@ -8,6 +8,7 @@ import { formatCount } from '../../lib/utils/format';
 import { LAUNCH_CATEGORIES, CATEGORY_LABELS, type AgentCategoryId } from '../../lib/api/contract';
 import { useCategories } from '../discovery/use-agents';
 import { guidanceFor } from '../categories/category-guidance';
+import { CategorySchematic } from './category-schematic';
 
 /**
  * The four Agent Studio categories, as the landing page's primary way in.
@@ -88,14 +89,25 @@ function CategoryTile({
          * glyph still helps four categories stay distinguishable at a glance, so it stays —
          * inline against the name, at the weight of a mark rather than a button.
          */}
-        {isLoading ? (
-          <Skeleton className="h-7 w-16" />
-        ) : (
-          <p className="display tabular text-2xl leading-none text-ink">
-            {formatCount(count ?? 0)}
-          </p>
-        )}
-        <p className="eyebrow mt-2">{count === 1 ? 'agent' : 'agents'}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            {isLoading ? (
+              <Skeleton className="h-7 w-16" />
+            ) : (
+              <p className="display tabular text-2xl leading-none text-ink">
+                {formatCount(count ?? 0)}
+              </p>
+            )}
+            <p className="eyebrow mt-2">{count === 1 ? 'agent' : 'agents'}</p>
+          </div>
+
+          {/*
+           * The schematic goes opposite the count, which is the only place on the tile with
+           * the width for it and the one spot the old icon badge vacated. It is what makes
+           * four tiles of identical size and structure read as four different strategies.
+           */}
+          <CategorySchematic id={id} />
+        </div>
 
         <h3 className="display mt-6 flex items-baseline gap-2 text-lg leading-tight text-ink transition-colors duration-300 group-hover:text-amber-bright">
           <Icon

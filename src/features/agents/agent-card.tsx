@@ -113,6 +113,39 @@ function describePaidWork(jobs: Agent['jobs']): { headline: string; detail: stri
   };
 }
 
+/**
+ * How much evidence stands behind this agent, from 0 to 1.
+ *
+ * Not a score, and deliberately not presented as one. It is a measure of how much there is to
+ * look at, which is a different claim from how good the agent is — an agent with forty pieces
+ * of mediocre feedback has more evidence than one with a single glowing review, and this says
+ * so. Nothing here is derived from the *content* of the feedback.
+ *
+ * Escrow outweighs feedback because a funded job is a budget that was locked on chain and
+ * released, while a score is what a client typed afterwards. Both saturate quickly: the
+ * difference between zero and one funded job matters enormously, and the difference between
+ * forty and eighty reviews does not, so the curve is deliberately steep at the bottom.
+ *
+ * Returns 0 for an agent with nothing recorded, which draws no gauge at all rather than a
+ * sliver. Absence of evidence has to look like absence.
+ */
+function evidenceStrength(agent: Agent): number {
+  const jobs = agent.jobs;
+  const funded = jobs?.funded ?? 0;
+  const completed = jobs?.completed ?? 0;
+  const feedback = agent.reputation?.feedbackCount ?? 0;
+  const clients = agent.reputation?.clientCount ?? 0;
+
+  if (funded === 0 && feedback === 0) return 0;
+
+  // Each term saturates on its own so one very active agent cannot flatten the whole grid.
+  const escrow = Math.min(funded / 3, 1) * 0.4 + Math.min(completed / 3, 1) * 0.2;
+  const reputation = Math.min(feedback / 12, 1) * 0.28 + Math.min(clients / 6, 1) * 0.12;
+
+  // Floored so anything with any evidence at all is visible rather than a hairline of nothing.
+  return Math.max(0.08, Math.min(escrow + reputation, 1));
+}
+
 export function AgentCard({ agent }: { agent: Agent }) {
   const primary = primaryOf(agent.categories);
   const secondaryCount = agent.categories.filter((entry) => !entry.isPrimary).length;
@@ -144,6 +177,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
 
   const paidWork = describePaidWork(agent.jobs);
   const endpointHost = reachableAt(agent.profile.endpoints);
+  const evidence = evidenceStrength(agent);
 
   return (
     <article
@@ -304,6 +338,39 @@ export function AgentCard({ agent }: { agent: Agent }) {
       </div>
 
       {/* ------------------------- evidence / footer ------------------------- */}
+      {/*
+       * An evidence gauge along the card's bottom edge, and the grid's only source of
+       * hierarchy.
+       *
+       * Twenty-four cards of identical weight give the eye nowhere to start, and the obvious
+       * fixes are both wrong: making one card larger invents an editorial recommendation the
+       * product cannot support, and sorting by score would rank agents by a number most of
+       * them do not have. So the differentiation has to come from what each card actually
+       * holds.
+       *
+       * This is that. A hairline that fills in proportion to the evidence behind the agent —
+       * escrowed work counts for more than recorded feedback, because a funded job is a
+       * budget locked on chain while a score is what a client wrote afterwards. Cards with
+       * real history now carry a visibly longer edge, so scanning a page of them surfaces the
+       * few worth opening without anything being reordered or resized.
+       *
+       * Absent evidence draws nothing at all. A zero-width rule is the honest rendering of
+       * "no evidence recorded", and it is the same position the score field takes.
+       */}
+      {evidence > 0 ? (
+        <div
+          className="relative h-px w-full bg-line"
+          role="img"
+          aria-label={`Evidence strength: ${String(Math.round(evidence * 100))} of 100`}
+        >
+          <span
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-dim to-amber transition-[width] duration-500 ease-fjord"
+            style={{ width: `${String(Math.round(evidence * 100))}%` }}
+            aria-hidden="true"
+          />
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <div className="min-w-0">
           {/*

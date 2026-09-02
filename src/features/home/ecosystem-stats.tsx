@@ -1,8 +1,36 @@
 'use client';
 
+import { Counter } from '../../components/ui/counter';
 import { Skeleton } from '../../components/ui/states';
 import { formatCount } from '../../lib/utils/format';
 import { useStats } from '../discovery/use-agents';
+
+/**
+ * How long ago the index was last advanced, in words.
+ *
+ * The point of showing this is that it is the one figure on the page that proves the others
+ * are being maintained. A pulsing dot on its own is theatre; a pulsing dot next to "indexed
+ * 6 minutes ago", read from `last_indexed_at`, is a status light.
+ *
+ * Returns null rather than "just now" when the timestamp is missing or unparseable, because
+ * silence is the honest output there and this product does not invent freshness.
+ */
+function describeFreshness(iso: string | null): string | null {
+  if (iso === null) return null;
+
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return null;
+
+  const minutes = Math.floor((Date.now() - then) / 60_000);
+  if (minutes < 1) return 'moments ago';
+  if (minutes < 60) return `${String(minutes)} min ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${String(hours)} ${hours === 1 ? 'hour' : 'hours'} ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${String(days)} ${days === 1 ? 'day' : 'days'} ago`;
+}
 
 /**
  * Live marketplace counts.
@@ -62,8 +90,26 @@ export function EcosystemStats() {
    * Rules run horizontally when the grid stacks and vertically when it does not, so the
    * division always reads along the axis the eye is travelling.
    */
+  const freshness = describeFreshness(data?.lastIndexedAt ?? null);
+
   return (
-    <dl className="grid grid-cols-2 gap-x-6 gap-y-9 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-x-0">
+    <>
+      {/*
+       * The status line above the figures, and the thing that makes them read as an index
+       * rather than as copy. A pulse on its own would be theatre; a pulse beside a real
+       * `last_indexed_at` is a status light, and it is the only figure here that says the
+       * other four are being maintained.
+       */}
+      {freshness ? (
+        <p className="mb-7 flex items-center gap-2 text-2xs text-ink-faint">
+          <span className="animate-live size-1 shrink-0 rounded-pill bg-positive" aria-hidden="true" />
+          <span>
+            Index advanced <span className="text-ink-secondary">{freshness}</span>
+          </span>
+        </p>
+      ) : null}
+
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-9 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-x-0">
       {items.map((item) => (
         <div
           key={item.label}
@@ -80,15 +126,14 @@ export function EcosystemStats() {
             {isLoading || item.value === undefined ? (
               <Skeleton className="h-9 w-28" />
             ) : (
-              <span className="display tabular text-display-sm text-ink">
-                {formatCount(item.value)}
-              </span>
+              <Counter value={item.value} className="display text-display-sm text-ink" />
             )}
           </dd>
           <p className="mt-2 text-3xs text-ink-faint">{item.note}</p>
         </div>
       ))}
-    </dl>
+      </dl>
+    </>
   );
 }
 
@@ -127,8 +172,8 @@ export function HeroIndexStrip() {
     <dl className="grid grid-cols-3 gap-px overflow-hidden bg-line">
       {items.map((item) => (
         <div key={item.label} className="bg-void px-1 pr-4 first:pl-0 sm:pr-6">
-          <dd className="display tabular text-2xl leading-none text-ink sm:text-3xl">
-            {formatCount(item.value)}
+          <dd className="display text-2xl leading-none text-ink sm:text-3xl">
+            <Counter value={item.value} />
           </dd>
           <dt className="eyebrow mt-2.5">{item.label}</dt>
         </div>

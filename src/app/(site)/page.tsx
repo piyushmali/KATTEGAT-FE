@@ -3,6 +3,7 @@ import { ArrowRight, BadgeCheck, Fingerprint, ScanSearch, ShieldCheck } from 'lu
 import { AgentPreview } from '@/features/home/agent-preview';
 import { EcosystemStats, FeedbackCoverage, HeroIndexStrip } from '@/features/home/ecosystem-stats';
 import { HarbourAtmosphere } from '@/features/home/harbour-atmosphere';
+import { HarbourManifest } from '@/features/home/harbour-manifest';
 import { LaunchCategories } from '@/features/home/launch-categories';
 import { Reveal } from '@/components/ui/reveal';
 import { EXPECTED_CHAIN } from '@/lib/web3/chain';
@@ -85,11 +86,22 @@ export default function HomePage() {
 
         <div className="relative mx-auto w-full max-w-shell px-4 pt-24 pb-14 sm:px-6 lg:px-8 lg:pt-32 lg:pb-20">
           {/*
-           * Asymmetric on purpose. The headline occupies roughly two thirds and is
-           * pushed to the baseline of the section, so the empty air above it reads as
-           * sky rather than as an unfinished layout.
+           * Headline left, the live manifest right, both sitting on the same baseline.
+           *
+           * Asymmetric on purpose — the headline still takes roughly two thirds and is pushed
+           * to the baseline of the section, so the air above it reads as sky. What changed is
+           * that the remaining third is no longer empty. The fold used to end in a large area
+           * of black to the right of the type, which is what made a page about a live index
+           * feel like a printed page.
+           *
+           * The manifest is deliberately the narrow column: it is evidence supporting the
+           * claim on the left, not a second headline. At `lg` and below it stacks underneath,
+           * after the actions, because on a phone the fold belongs to the statement and the
+           * one button — an instrument panel above the call to action would be furniture in
+           * the way.
            */}
-          <div className="max-w-4xl">
+          <div className="grid items-end gap-12 lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-14">
+            <div className="max-w-4xl">
             <Reveal>
               <p className="eyebrow flex items-center gap-2.5">
                 <span className="size-1 rounded-pill bg-amber" aria-hidden="true" />
@@ -163,6 +175,15 @@ export default function HomePage() {
                   </span>
                 </Link>
               </div>
+            </Reveal>
+          </div>
+
+            {/*
+             * Last in the reveal sequence, so the eye lands on the statement, then the
+             * action, then notices the harbour filling in beside it.
+             */}
+            <Reveal delay={420}>
+              <HarbourManifest />
             </Reveal>
           </div>
 
@@ -260,8 +281,25 @@ export default function HomePage() {
       </section>
 
       {/* ------------------------------ live counts ---------------------------- */}
-      <section aria-labelledby="ecosystem" className="border-t border-line">
-        <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      {/*
+       * The survey grid returns here, and only here among the lower sections.
+       *
+       * Depth was the thing most obviously missing below the fold: four sections in a row sat
+       * on flat void, and a page of pure black between hairlines reads as unfinished however
+       * well the type is set. The answer is not to wash every section — that would flatten
+       * the hero's distinction and edge toward the decorative gradients this art direction
+       * refuses — it is to give the section that reports the index the ground of a plan
+       * drawing, so the figures read as an instrument panel rather than as copy.
+       *
+       * Masked to fade before it reaches either rule, so the grid never terminates on a hard
+       * edge, and held at 12% where it is felt more than seen.
+       */}
+      <section aria-labelledby="ecosystem" className="relative isolate border-t border-line">
+        <div
+          className="grid-field pointer-events-none absolute inset-0 opacity-[0.12]"
+          aria-hidden="true"
+        />
+        <div className="relative mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <Reveal>
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div>
@@ -301,9 +339,19 @@ export default function HomePage() {
       <section
         id="how-it-works"
         aria-labelledby="how-it-works-heading"
-        className="border-t border-line"
+        className="relative isolate overflow-hidden border-t border-line"
       >
-        <div className="mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        {/*
+         * Fog rather than the survey grid, because this section asserts rather than reports.
+         * The index above it gets drawn structure; the manifesto gets air behind the type. One
+         * low wash, drifting on the same 64-second cycle as the hero's, so the two read as the
+         * same weather rather than as two effects.
+         */}
+        <div
+          className="fog animate-drift pointer-events-none absolute -inset-x-24 inset-y-0 opacity-40"
+          aria-hidden="true"
+        />
+        <div className="relative mx-auto max-w-shell px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <Reveal>
             <div className="max-w-3xl">
               <p className="eyebrow">Why trust KATTEGAT</p>
