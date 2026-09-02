@@ -226,40 +226,61 @@ export function DiscoveryView() {
           </div>
 
           {meta && meta.totalPages > 1 ? (
+            /*
+             * Asymmetric, and it states a position rather than a page number.
+             *
+             * `Previous — 1 / 10,192 — Next` is the default shape of this control everywhere,
+             * and it answers the least useful question available: which page of an arbitrary
+             * slicing the reader is on. "Agents 1–24 of 87,930" says where they are in the
+             * catalogue, which is the thing they were actually counting, and it reuses the
+             * ledger voice the toolbar above now opens with.
+             *
+             * The controls sit together on the right instead of bracketing the text. Paging is
+             * one task, so its two buttons belong beside each other where a thumb or a cursor
+             * can use them in sequence.
+             */
             <nav
-              className="mt-10 flex items-center justify-between gap-4 border-t border-line pt-6"
+              className="mt-12 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-t border-line pt-6"
               aria-label="Agent pagination"
             >
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={state.page <= 1}
-                onClick={() => {
-                  update({ page: Math.max(1, state.page - 1) });
-                }}
-              >
-                <ChevronLeft className="size-3.5" aria-hidden="true" />
-                Previous
-              </Button>
+              <div className="min-w-0">
+                <p className="display tabular text-sm text-ink-secondary">
+                  {formatCount((meta.page - 1) * meta.perPage + 1)}
+                  <span className="text-line-strong">–</span>
+                  {formatCount(Math.min(meta.page * meta.perPage, meta.total))}
+                  <span className="ml-1.5 text-2xs text-ink-faint">
+                    of {formatCount(meta.total)}
+                  </span>
+                </p>
+                <p className="eyebrow mt-1.5">
+                  Page {formatCount(meta.page)} of {formatCount(meta.totalPages)}
+                </p>
+              </div>
 
-              {/* Position set in the display face, so the numbers read as a legend. */}
-              <span className="display tabular text-sm text-ink-muted">
-                {formatCount(meta.page)}
-                <span className="text-line-strong"> / </span>
-                {formatCount(meta.totalPages)}
-              </span>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={state.page >= meta.totalPages}
-                onClick={() => {
-                  update({ page: state.page + 1 });
-                }}
-              >
-                Next
-                <ChevronRight className="size-3.5" aria-hidden="true" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={state.page <= 1}
+                  onClick={() => {
+                    update({ page: Math.max(1, state.page - 1) });
+                  }}
+                >
+                  <ChevronLeft className="size-3.5" aria-hidden="true" />
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={state.page >= meta.totalPages}
+                  onClick={() => {
+                    update({ page: state.page + 1 });
+                  }}
+                >
+                  Next
+                  <ChevronRight className="size-3.5" aria-hidden="true" />
+                </Button>
+              </div>
             </nav>
           ) : null}
         </>

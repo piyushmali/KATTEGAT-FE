@@ -329,9 +329,14 @@ export function AgentDetailView({ id }: { id: string }) {
             </section>
           </div>
 
-          {/* Hiring is the page's destination, so it stays visible while scrolling. */}
+          {/*
+           * Hiring is the page's destination, so it stays visible while scrolling and carries
+           * the same lead weight as the evidence it is the conclusion of. It was the only
+           * decision surface on the page still set at the weight of a reference table.
+           */}
           <div className="lg:sticky lg:top-20">
             <HiringPanel
+              weight="lead"
               agentId={agent.identity.id}
               agentName={agent.profile.name}
               providerAddress={agent.identity.walletAddress}

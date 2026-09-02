@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Clock, Coins, ExternalLink, Lock, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Panel, PanelHeader } from '../../components/ui/card';
+import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { InlineSpinner, Skeleton } from '../../components/ui/states';
 import { describeError } from '../../lib/api/errors';
 import { formatDate } from '../../lib/utils/format';
@@ -86,9 +86,11 @@ export function HiringPanel({
   agentId,
   agentName,
   providerAddress,
+  weight = 'default',
 }: {
   agentId: string;
   agentName: string;
+  weight?: PanelWeight;
   /**
    * The agent's own wallet address, which is how the escrow kernel names it as a provider.
    *
@@ -121,7 +123,7 @@ export function HiringPanel({
   };
 
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
         title="Hiring"
         action={
@@ -134,16 +136,23 @@ export function HiringPanel({
       />
 
       <div className="p-4 sm:p-5">
-        <div className="flex size-10 items-center justify-center rounded-control border border-amber-dim/25 bg-amber-wash/35">
-          <ShieldCheck className="size-4 text-amber" aria-hidden="true" />
-        </div>
-
         {/*
          * The one sentence a user must not skim, because it is the difference between scoped
          * authority and handing over a wallet.
+         *
+         * The shield rides the line rather than sitting in a 40px bordered badge above it. That
+         * badge was the same centred-icon-in-a-box device the empty and error states used to
+         * lean on, and once those were rebuilt it was the last one left in the product — a
+         * decoration announcing a sentence that is perfectly capable of announcing itself.
          */}
-        <p className="display mt-4 text-lg leading-snug text-ink">
-          Scoped authority, <em>not</em> wallet access
+        <p className="display flex items-start gap-2.5 text-lg leading-snug text-ink">
+          <ShieldCheck
+            className="mt-1 size-4 shrink-0 text-amber"
+            aria-hidden="true"
+          />
+          <span>
+            Scoped authority, <em>not</em> wallet access
+          </span>
         </p>
 
         {sessionsQuery.isLoading ? (
@@ -190,7 +199,14 @@ export function HiringPanel({
              * plainly because it is the difference between this product and most of its
              * competitors.
              */}
-            <p className="mt-4 rounded-control border border-line bg-surface-inset px-3.5 py-2.5 text-2xs leading-5 text-ink-muted">
+            {/*
+             * Marked with a metal edge rather than wrapped in another box. This panel already
+             * sits inside a bordered surface, and stacking two or three inset cards inside it
+             * turned the most important paragraph on the page into one card among several. A
+             * left rule gives it weight without adding a frame, and it is the same device the
+             * error state uses, so "read this" looks the same wherever it appears.
+             */}
+            <p className="mt-4 border-l-2 border-amber-dim/60 pl-3.5 text-2xs leading-5 text-ink-muted">
               Your authority stays in this device. Hiring creates a passkey held in your
               hardware, and every grant and revocation is signed there behind Face ID, Touch ID
               or Windows Hello. KATTEGAT&rsquo;s servers never hold it and cannot grant or
@@ -201,7 +217,12 @@ export function HiringPanel({
             {context.isMainnet ? (
               <p
                 role="note"
-                className="mt-2.5 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs leading-5 text-caution"
+                /*
+                 * The mainnet warning keeps its wash. It is the one notice here that concerns
+                 * irreversible loss of real money, so it is the one place a tinted panel is
+                 * earned rather than habitual.
+                 */
+                className="mt-3 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs leading-5 text-caution"
               >
                 Mainnet. Real funds. The spend ceiling below is the most this agent can ever
                 move, so set it to an amount you would be comfortable losing.
