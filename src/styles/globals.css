@@ -455,6 +455,37 @@
     display: none;
   }
 
+  /*
+   * A rule that draws itself under a text link on hover.
+   *
+   * Promoted to a utility because it was already the product's answer in two places — the
+   * header's nav and the hero's secondary action — written out by hand both times, while
+   * every other text link in the product settled for changing colour. On a dark ground a
+   * colour shift between two muted inks is close to invisible, so most links had no felt
+   * feedback at all, and the ones that did were the exception rather than the rule.
+   *
+   * Transform-only, so it composites and never touches layout. `origin-left` because a rule
+   * that grows from the middle reads as a highlight and one that grows from the edge reads as
+   * something being drawn, which is the register this product is written in.
+   */
+  .link-rule {
+    position: relative;
+  }
+  .link-rule::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -0.15em 0;
+    height: 1px;
+    background: var(--color-amber-dim);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 500ms var(--ease-fjord);
+  }
+  .link-rule:hover::after,
+  .link-rule:focus-visible::after {
+    transform: scaleX(1);
+  }
+
   /* Section eyebrow: small, tracked-out, uppercase. Used for orientation. */
   .eyebrow {
     font-size: var(--text-2xs);

@@ -30,7 +30,7 @@ export function SiteFooter() {
                 <li>
                   <Link
                     href="/discover"
-                    className="text-xs text-ink-muted transition-colors hover:text-ink"
+                    className="link-rule text-xs text-ink-muted transition-colors hover:text-ink"
                   >
                     Discover agents
                   </Link>
@@ -38,7 +38,7 @@ export function SiteFooter() {
                 <li>
                   <Link
                     href="/#how-it-works"
-                    className="text-xs text-ink-muted transition-colors hover:text-ink"
+                    className="link-rule text-xs text-ink-muted transition-colors hover:text-ink"
                   >
                     How it works
                   </Link>
@@ -54,7 +54,7 @@ export function SiteFooter() {
                     href={explorerUrl.address(ERC8004_ADDRESSES.identityRegistry)}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="text-xs text-ink-muted transition-colors hover:text-ink"
+                    className="link-rule text-xs text-ink-muted transition-colors hover:text-ink"
                   >
                     Identity registry
                   </a>
@@ -64,7 +64,7 @@ export function SiteFooter() {
                     href={explorerUrl.address(ERC8004_ADDRESSES.reputationRegistry)}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="text-xs text-ink-muted transition-colors hover:text-ink"
+                    className="link-rule text-xs text-ink-muted transition-colors hover:text-ink"
                   >
                     Reputation registry
                   </a>
@@ -80,7 +80,7 @@ export function SiteFooter() {
                     href="https://eips.ethereum.org/EIPS/eip-8004"
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="text-xs text-ink-muted transition-colors hover:text-ink"
+                    className="link-rule text-xs text-ink-muted transition-colors hover:text-ink"
                   >
                     ERC-8004
                   </a>
@@ -90,7 +90,7 @@ export function SiteFooter() {
                     href="https://www.bnbchain.org"
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="text-xs text-ink-muted transition-colors hover:text-ink"
+                    className="link-rule text-xs text-ink-muted transition-colors hover:text-ink"
                   >
                     BNB Chain
                   </a>
