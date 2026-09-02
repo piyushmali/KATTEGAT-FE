@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ChevronDown, ExternalLink, FileJson } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { CopyButton } from '../../components/ui/copy-button';
-import { DataRow, Panel, PanelHeader } from '../../components/ui/card';
+import { DataRow, Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { cn } from '../../lib/utils/cn';
 import { formatCount, formatDate } from '../../lib/utils/format';
 import { agentIdentityUrl, explorerUrl, truncateAddress } from '../../lib/web3/chain';
@@ -22,15 +22,24 @@ import type { Agent } from '../../lib/api/contract';
  * 200-character S3 link across the page is the difference between reading as a product
  * and reading as a debug dump, so the raw source sits behind a disclosure.
  */
-export function OnChainIdentity({ agent }: { agent: Agent }) {
+export function OnChainIdentity({
+  agent,
+  weight = 'default',
+}: {
+  agent: Agent;
+  weight?: PanelWeight;
+}) {
+  const quiet = weight === 'quiet';
   const [sourceOpen, setSourceOpen] = useState(false);
   const { identity, profile } = agent;
 
   const registered = formatDate(identity.registeredAt);
 
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
+        level={3}
+        bare={quiet}
         title="On-chain identity"
         action={
           <a
@@ -46,18 +55,18 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
       />
 
       <dl className="divide-y divide-line">
-        <DataRow label="Agent ID">
+        <DataRow bare={quiet} label="Agent ID">
           <span className="inline-flex items-center gap-1.5">
             <span className="font-mono text-ink">#{identity.agentId}</span>
             <CopyButton value={String(identity.agentId)} label="agent ID" />
           </span>
         </DataRow>
 
-        <DataRow label="Owner">
+        <DataRow bare={quiet} label="Owner">
           <AddressValue address={identity.ownerAddress} label="owner address" />
         </DataRow>
 
-        <DataRow label="Payment wallet">
+        <DataRow bare={quiet} label="Payment wallet">
           {identity.walletAddress ? (
             <AddressValue address={identity.walletAddress} label="payment wallet" />
           ) : (
@@ -65,7 +74,7 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
           )}
         </DataRow>
 
-        <DataRow label="Standard">
+        <DataRow bare={quiet} label="Standard">
           <span className="inline-flex flex-wrap items-center gap-1.5">
             <Badge tone="amber">ERC-8004</Badge>
             <Badge tone="outline" mono>
@@ -74,7 +83,7 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
           </span>
         </DataRow>
 
-        <DataRow label="Registered">
+        <DataRow bare={quiet} label="Registered">
           {registered ? (
             <span className="text-ink-secondary">
               {registered}
@@ -103,7 +112,7 @@ export function OnChainIdentity({ agent }: { agent: Agent }) {
           )}
         </DataRow>
 
-        <DataRow label="Registration file">
+        <DataRow bare={quiet} label="Registration file">
           {identity.agentUri ? (
             <div>
               <div className="flex flex-wrap items-center gap-2">

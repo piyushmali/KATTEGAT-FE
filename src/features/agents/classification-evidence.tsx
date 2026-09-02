@@ -1,6 +1,6 @@
 import { CircleHelp, ScanSearch } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
-import { Panel, PanelHeader } from '../../components/ui/card';
+import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { CATEGORY_LABELS, type AgentCategoryAssignment } from '../../lib/api/contract';
 
 /**
@@ -37,13 +37,20 @@ function describeSignal(signal: string): {
   };
 }
 
-export function ClassificationEvidence({ categories }: { categories: AgentCategoryAssignment[] }) {
+export function ClassificationEvidence({
+  categories,
+  weight = 'default',
+}: {
+  categories: AgentCategoryAssignment[];
+  weight?: PanelWeight;
+}) {
   const unclassified =
     categories.length === 0 || categories.every((entry) => entry.category === 'uncategorized');
 
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
+        level={3}
         title="Why this classification?"
         hint="ERC-8004 has no category field. KATTEGAT derives one and shows the evidence."
       />

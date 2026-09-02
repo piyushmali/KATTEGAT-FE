@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Layers } from 'lucide-react';
 import { AgentImage } from '../../components/ui/agent-image';
 import { Badge, StatusDot } from '../../components/ui/badge';
-import { Panel, PanelHeader } from '../../components/ui/card';
+import { Panel, PanelHeader, SectionRule, type PanelWeight } from '../../components/ui/card';
 import { AgentProfileSkeleton, ErrorState } from '../../components/ui/states';
 import { ApiError, describeError } from '../../lib/api/errors';
 import { CATEGORY_LABELS, describeInterface } from '../../lib/api/contract';
@@ -240,48 +240,93 @@ export function AgentDetailView({ id }: { id: string }) {
        * on the landing page, where the user is reading; not here, where they are
        * checking.
        */}
-      <div className="mx-auto max-w-shell px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
-          <div className="min-w-0 space-y-4">
+      <div className="mx-auto max-w-shell px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start lg:gap-12">
+          {/*
+           * Three tiers, not seven siblings.
+           *
+           * This column used to be `space-y-4` over six panels of identical weight, and the
+           * result read as a settings form: same border, same fill, same radius, same small
+           * label, six times. Nothing was wrong with any single panel — the page simply never
+           * said which of them mattered.
+           *
+           * So the grouping now carries the hierarchy, and it is grouped by what the reader is
+           * doing rather than by where the data came from. Evidence is the decision and takes
+           * the lit edge. Reasoning explains one of KATTEGAT's own claims and sits at normal
+           * weight. Reference is material worth keeping and not worth framing, so it loses its
+           * boxes entirely and becomes a ruled ledger.
+           *
+           * The air between tiers does as much work as the rules: 3.5rem between groups against
+           * 1rem within them is what makes three things read as three rather than as eight.
+           */}
+          <div className="min-w-0 space-y-14">
+            {/* ------------------------------ evidence ------------------------------ */}
+            <section aria-labelledby="tier-evidence" className="space-y-4">
+              <SectionRule
+                id="tier-evidence"
+                label="Evidence"
+                meta="Read from chain and from the agent’s own registration file"
+              />
+
+              {/*
+               * Interface leads, above reputation.
+               *
+               * Reputation answers "should I use this", which is only worth asking once
+               * "can I use this at all" has an answer. With the endpoints buried, every
+               * profile read as the same page with different words in it, because the one
+               * thing that varies between a working agent and an empty registration was
+               * the one thing not shown.
+               */}
+              <AgentInterface
+                weight="lead"
+                endpoints={agent.profile.endpoints}
+                trustModels={agent.profile.trustModels}
+                x402Support={agent.profile.x402Support}
+                metadataResolved={!metadataMissing}
+              />
+
+              {/*
+               * Escrow above reputation, deliberately.
+               *
+               * Both answer "should I trust this", but a job is a budget that was locked on chain
+               * and released, while a reputation score is what a client said afterwards. When the
+               * two disagree, the payment is the better evidence, so it reads first.
+               */}
+              <EscrowPanel weight="lead" agent={agent} />
+
+              <AgentReputationPanel
+                weight="lead"
+                agent={agent}
+                live={reputationQuery.data ?? null}
+                isLoading={reputationQuery.isLoading}
+              />
+            </section>
+
+            {/* ------------------------------ reasoning ----------------------------- */}
             {/*
-             * Interface leads the body, above reputation.
-             *
-             * Reputation answers "should I use this", which is only worth asking once
-             * "can I use this at all" has an answer. With the endpoints buried, every
-             * profile read as the same page with different words in it, because the one
-             * thing that varies between a working agent and an empty registration was
-             * the one thing not shown.
+             * Separated from evidence because it is a different kind of claim. Everything
+             * above is something the chain or the operator said; this is something KATTEGAT
+             * worked out, and a page that asks to be trusted should not blur those together.
              */}
-            <AgentInterface
-              endpoints={agent.profile.endpoints}
-              trustModels={agent.profile.trustModels}
-              x402Support={agent.profile.x402Support}
-              metadataResolved={!metadataMissing}
-            />
+            <section aria-labelledby="tier-reasoning" className="space-y-4">
+              <SectionRule
+                id="tier-reasoning"
+                label="KATTEGAT’s reading"
+                meta="Derived, not published"
+              />
+              <ClassificationEvidence categories={agent.categories} />
+            </section>
 
-            {/*
-             * Escrow above reputation, deliberately.
-             *
-             * Both answer "should I trust this", but a job is a budget that was locked on chain
-             * and released, while a reputation score is what a client said afterwards. When the
-             * two disagree, the payment is the better evidence, so it reads first.
-             */}
-            <EscrowPanel agent={agent} />
-
-            <AgentReputationPanel
-              agent={agent}
-              live={reputationQuery.data ?? null}
-              isLoading={reputationQuery.isLoading}
-            />
-
-            <ClassificationEvidence categories={agent.categories} />
-
-            <CapabilityPanel
-              capabilities={agent.profile.capabilities}
-              traits={agent.profile.traitTags}
-            />
-
-            <OnChainIdentity agent={agent} />
+            {/* ------------------------------ reference ----------------------------- */}
+            <section aria-labelledby="tier-reference">
+              <SectionRule id="tier-reference" label="Reference" className="mb-1" />
+              <CapabilityPanel
+                weight="quiet"
+                capabilities={agent.profile.capabilities}
+                traits={agent.profile.traitTags}
+              />
+              <OnChainIdentity weight="quiet" agent={agent} />
+            </section>
           </div>
 
           {/* Hiring is the page's destination, so it stays visible while scrolling. */}
@@ -307,16 +352,28 @@ export function AgentDetailView({ id }: { id: string }) {
  * registration file. KATTEGAT has not verified that any of them work, and saying so
  * is more useful than implying a guarantee we cannot make.
  */
-function CapabilityPanel({ capabilities, traits }: { capabilities: string[]; traits: string[] }) {
+function CapabilityPanel({
+  capabilities,
+  traits,
+  weight = 'default',
+}: {
+  capabilities: string[];
+  traits: string[];
+  weight?: PanelWeight;
+}) {
   if (capabilities.length === 0 && traits.length === 0) return null;
 
+  const quiet = weight === 'quiet';
+
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
+        level={3}
+        bare={quiet}
         title="Capabilities"
         hint="Self-declared in the agent’s registration file. KATTEGAT has not verified that they function."
       />
-      <div className="space-y-4 p-4 sm:p-5">
+      <div className={quiet ? 'space-y-4 pb-6' : 'space-y-4 p-4 sm:p-5'}>
         {capabilities.length > 0 ? (
           <div>
             <p className="eyebrow">Declared skills</p>

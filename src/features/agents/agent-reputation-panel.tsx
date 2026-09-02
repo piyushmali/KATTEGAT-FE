@@ -1,6 +1,6 @@
 import { BadgeCheck, Users } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
-import { Panel, PanelHeader } from '../../components/ui/card';
+import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { InlineSpinner } from '../../components/ui/states';
 import type { Agent, ReputationDetail } from '../../lib/api/contract';
 import { formatScore } from '../../lib/utils/format';
@@ -21,7 +21,9 @@ export function AgentReputationPanel({
   agent,
   live,
   isLoading,
+  weight = 'default',
 }: {
+  weight?: PanelWeight;
   agent: Agent;
   live: ReputationDetail | null;
   isLoading: boolean;
@@ -38,8 +40,9 @@ export function AgentReputationPanel({
   const hasEvidence = score !== null && feedbackCount > 0;
 
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
+        level={3}
         title="Reputation"
         action={
           isLoading ? (

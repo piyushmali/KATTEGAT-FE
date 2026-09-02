@@ -2,7 +2,7 @@ import { Coins, ExternalLink, Globe, MessagesSquare, Plug, Terminal, Wallet } fr
 import type { ComponentType } from 'react';
 import { Badge } from '../../components/ui/badge';
 import { CopyButton } from '../../components/ui/copy-button';
-import { Panel, PanelHeader } from '../../components/ui/card';
+import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import {
   formatServiceVersion,
   type AgentEndpoint,
@@ -73,7 +73,9 @@ export function AgentInterface({
   trustModels,
   x402Support,
   metadataResolved,
+  weight = 'default',
 }: {
+  weight?: PanelWeight;
   endpoints: AgentEndpoint[];
   trustModels: string[];
   x402Support: boolean | null;
@@ -88,8 +90,9 @@ export function AgentInterface({
   ).length;
 
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
+        level={3}
         title="Interface"
         hint="Endpoints the operator published in this agent's registration file. KATTEGAT lists them as found and does not call them."
         action={

@@ -2,7 +2,7 @@
 
 import { ExternalLink, ShieldCheck } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
-import { Panel, PanelHeader } from '../../components/ui/card';
+import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { InlineSpinner } from '../../components/ui/states';
 import type { Agent, AgentJob, JobsContext } from '../../lib/api/contract';
 import { formatDate } from '../../lib/utils/format';
@@ -28,7 +28,13 @@ import { readTask, releaseDueAt, STATUS_MEANING } from './escrow-evidence';
  * this rail yet is not an agent that failed. Same principle as the reputation panel: absence of
  * evidence, stated plainly, at full size.
  */
-export function EscrowPanel({ agent }: { agent: Agent }) {
+export function EscrowPanel({
+  agent,
+  weight = 'default',
+}: {
+  agent: Agent;
+  weight?: PanelWeight;
+}) {
   const tally = agent.jobs;
 
   /*
@@ -39,8 +45,8 @@ export function EscrowPanel({ agent }: { agent: Agent }) {
 
   if (tally === null) {
     return (
-      <Panel>
-        <PanelHeader title="Paid work" />
+      <Panel weight={weight}>
+        <PanelHeader level={3} title="Paid work" />
         <div className="p-4 sm:p-5">
           <div className="rounded-card border border-dashed border-line-strong bg-surface-inset px-5 py-6">
             {/*
@@ -64,8 +70,9 @@ export function EscrowPanel({ agent }: { agent: Agent }) {
   const named = tally.total - tally.funded;
 
   return (
-    <Panel>
+    <Panel weight={weight}>
       <PanelHeader
+        level={3}
         title="Paid work"
         hint="Escrowed jobs on the ERC-8183 AgenticCommerce kernel. Read from chain, not self-reported."
         action={jobsQuery.isLoading ? <InlineSpinner label="Reading escrow" /> : null}

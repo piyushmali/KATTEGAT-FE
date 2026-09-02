@@ -429,6 +429,32 @@
     border-width: 0;
   }
 
+  /*
+   * Horizontal rail: one line that scrolls instead of wrapping into a block.
+   *
+   * The marketplace has twelve categories. Wrapped, they became a paragraph of pills two
+   * and three rows deep, which is the shape of a tag cloud rather than of a primary axis,
+   * and nothing in it read as more important than anything else. A single line keeps the
+   * axis legible and gives the composition a horizon to sit on.
+   *
+   * The mask fades the right edge only. Fading both would clip the first item at rest,
+   * which looks like a rendering fault on the one item most likely to be selected; a hard
+   * left edge is the honest trade. Scrollbar hidden because the fade already says there is
+   * more, and a visible bar under a row of type reads as a browser artefact.
+   */
+  .rail {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Keeps keyboard focus from landing half-hidden under the fade. */
+    scroll-padding-inline: 2.5rem;
+    mask-image: linear-gradient(to right, black calc(100% - 3rem), transparent);
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Section eyebrow: small, tracked-out, uppercase. Used for orientation. */
   .eyebrow {
     font-size: var(--text-2xs);
