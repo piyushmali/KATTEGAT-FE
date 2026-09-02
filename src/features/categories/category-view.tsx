@@ -39,6 +39,13 @@ export function CategoryView({ id }: { id: AgentCategoryId }) {
     direction: 'desc',
     // Complete records only, same default as /discover: a page of blank cards helps nobody.
     resolvedOnly: true,
+    /*
+     * Also the same default as /discover, and it matters here in proportion to the category.
+     * Trading & Execution holds 129,900 agents, most of them ids sharing one endpoint-less
+     * registration file, so without this the largest category was the least useful page on the
+     * site: the same name, ranked by a feedback count every copy leaves at zero.
+     */
+    hasEndpoint: true,
   });
 
   const category = categoriesQuery.data?.data.find((entry) => entry.id === id);

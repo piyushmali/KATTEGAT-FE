@@ -621,6 +621,8 @@ export interface ListAgentsParams {
   q?: string;
   trait?: string[];
   resolvedOnly?: boolean;
+  /** Only agents that published an interface. Distinct from `protocol`, which picks one. */
+  hasEndpoint?: boolean;
   minConfidence?: number;
   sort?: 'registered_at' | 'reputation' | 'name' | 'feedback';
   direction?: 'asc' | 'desc';

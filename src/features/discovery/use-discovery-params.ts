@@ -59,6 +59,8 @@ export interface DiscoveryState {
   protocol: string | null;
   traits: string[];
   resolvedOnly: boolean;
+  /** Only agents that published an interface. On by default; see the note in the parser. */
+  hasEndpoint: boolean;
   sort: SortValue;
   page: number;
 }
@@ -106,6 +108,25 @@ export function useDiscoveryParams() {
        * question the page answers first, from "what exists" to "what can I look at".
        */
       resolvedOnly: searchParams.get('resolved') !== '0',
+      /*
+       * On by default for the same reason as `resolvedOnly` above, one step further along the
+       * same problem.
+       *
+       * Resolving the metadata was necessary but not sufficient. 117,564 of 325,546 agents —
+       * 36% of the registry — share one registration file, which resolves perfectly and
+       * declares no endpoint, no capabilities and no feedback. Because it resolves instantly
+       * while genuinely new agents wait on the backlog, newest-first put that single agent at
+       * the top of everything: 385 of the newest 500 records were the same name repeated.
+       *
+       * Filtering to agents that published somewhere to call leaves 87,930, and 493 distinct
+       * names in the newest 500. It is also the honest cut rather than a cosmetic one: an
+       * agent with no endpoint cannot be invoked or hired, so it is a registry entry rather
+       * than something a visitor can do anything with.
+       *
+       * Hides nothing. "Any" is one click away in the interface row, the endpoint-less agents
+       * have their own chip, and every count reflects the filter in force.
+       */
+      hasEndpoint: searchParams.get('endpoint') !== '0',
       sort: isSort(rawSort) ? rawSort : 'registered_at',
       page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
     };
@@ -137,6 +158,7 @@ export function useDiscoveryParams() {
       }
       // Inverted, so the default state leaves no parameter in the URL at all.
       if ('resolvedOnly' in patch) setOrDelete('resolved', patch.resolvedOnly ? null : '0');
+      if ('hasEndpoint' in patch) setOrDelete('endpoint', patch.hasEndpoint ? null : '0');
       if ('traits' in patch) {
         next.delete('trait');
         for (const trait of patch.traits ?? []) next.append('trait', trait);
@@ -178,7 +200,8 @@ export function useDiscoveryParams() {
     state.category !== null ||
     state.protocol !== null ||
     state.traits.length > 0 ||
-    !state.resolvedOnly;
+    !state.resolvedOnly ||
+    !state.hasEndpoint;
 
   /** Maps URL state onto the API's parameter names. */
   const queryParams = useMemo<ListAgentsParams>(() => {
@@ -194,6 +217,9 @@ export function useDiscoveryParams() {
     if (state.protocol) params.protocol = state.protocol;
     if (state.traits.length > 0) params.trait = state.traits;
     if (state.resolvedOnly) params.resolvedOnly = true;
+    // Redundant alongside an explicit protocol, which already implies an endpoint, and sending
+    // it anyway would put a parameter in the request that the chip selection contradicts.
+    if (state.hasEndpoint && state.protocol === null) params.hasEndpoint = true;
     return params;
   }, [state]);
 

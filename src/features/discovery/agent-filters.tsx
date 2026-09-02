@@ -153,11 +153,26 @@ export function AgentFilters({
         aria-label="Filter by interface"
       >
         <span className="eyebrow mr-0.5 shrink-0">Interface</span>
+        {/*
+         * Two unfiltered states rather than one, because "no protocol selected" now covers two
+         * different questions. "Has endpoint" is the default view and asks for agents there is
+         * something to call; "Any" is the whole registry including the 156,665 entries that
+         * published nowhere to reach them.
+         */}
         <Chip
           size="sm"
-          active={state.protocol === null}
+          active={state.protocol === null && state.hasEndpoint}
           onClick={() => {
-            onUpdate({ protocol: null });
+            onUpdate({ protocol: null, hasEndpoint: true });
+          }}
+        >
+          Has endpoint
+        </Chip>
+        <Chip
+          size="sm"
+          active={state.protocol === null && !state.hasEndpoint}
+          onClick={() => {
+            onUpdate({ protocol: null, hasEndpoint: false });
           }}
         >
           Any
@@ -169,7 +184,12 @@ export function AgentFilters({
             active={state.protocol === option.value}
             muted={option.value === 'unconfigured'}
             onClick={() => {
-              onUpdate({ protocol: state.protocol === option.value ? null : option.value });
+              // Naming a protocol already implies an endpoint, and `unconfigured` means the
+              // opposite of one, so both clear the broader flag rather than fighting it.
+              onUpdate({
+                protocol: state.protocol === option.value ? null : option.value,
+                hasEndpoint: state.protocol === option.value,
+              });
             }}
           >
             {option.label}

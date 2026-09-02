@@ -39,8 +39,9 @@ const baseState: DiscoveryState = {
   category: null,
   protocol: null,
   traits: [],
-  // The discovery view's default: complete records only.
+  // The discovery view's defaults: complete records, and something to call.
   resolvedOnly: true,
+  hasEndpoint: true,
   sort: 'registered_at',
   page: 1,
 };

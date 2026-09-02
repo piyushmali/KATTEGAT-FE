@@ -36,6 +36,14 @@ export function AgentPreview() {
     sort: 'registered_at',
     direction: 'desc',
     resolvedOnly: true,
+    /*
+     * Matters most here, on the first screen anyone sees. One registration file is shared by
+     * 117,564 agent ids and declares no endpoint, and because it resolves instantly while
+     * genuinely new agents wait on the metadata backlog, newest-first showed the same name in
+     * all six slots. Requiring an endpoint makes these six six different agents, and ones a
+     * visitor could actually hire.
+     */
+    hasEndpoint: true,
   });
 
   if (isError) return null;
