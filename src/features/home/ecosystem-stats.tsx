@@ -12,24 +12,40 @@ import { useStats } from '../discovery/use-agents';
  * are being maintained. A pulsing dot on its own is theatre; a pulsing dot next to "indexed
  * 6 minutes ago", read from `last_indexed_at`, is a status light.
  *
+ * `advancing` is the honest half, and it exists because the first version of this was not.
+ * The deployed catalogue is a snapshot — ingestion runs against a full local database and
+ * this one is refreshed deliberately, for reasons the backend's deployment notes set out at
+ * length — so `last_indexed_at` here is routinely hours old. A pulsing green dot beside "5
+ * hours ago" claims activity that is not happening, on the one page whose whole argument is
+ * that absent data gets reported as absent.
+ *
+ * So under an hour the caller may pulse, because something is genuinely moving. Past that the
+ * indicator goes static and grey, and the sentence carries the fact on its own.
+ *
  * Returns null rather than "just now" when the timestamp is missing or unparseable, because
  * silence is the honest output there and this product does not invent freshness.
  */
-function describeFreshness(iso: string | null): string | null {
+export function describeFreshness(
+  iso: string | null,
+): { label: string; advancing: boolean } | null {
   if (iso === null) return null;
 
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return null;
 
   const minutes = Math.floor((Date.now() - then) / 60_000);
-  if (minutes < 1) return 'moments ago';
-  if (minutes < 60) return `${String(minutes)} min ago`;
+  const advancing = minutes < 60;
+
+  if (minutes < 1) return { label: 'moments ago', advancing };
+  if (minutes < 60) return { label: `${String(minutes)} min ago`, advancing };
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${String(hours)} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  if (hours < 24) {
+    return { label: `${String(hours)} ${hours === 1 ? 'hour' : 'hours'} ago`, advancing };
+  }
 
   const days = Math.floor(hours / 24);
-  return `${String(days)} ${days === 1 ? 'day' : 'days'} ago`;
+  return { label: `${String(days)} ${days === 1 ? 'day' : 'days'} ago`, advancing };
 }
 
 /**
@@ -102,9 +118,16 @@ export function EcosystemStats() {
        */}
       {freshness ? (
         <p className="mb-7 flex items-center gap-2 text-2xs text-ink-faint">
-          <span className="animate-live size-1 shrink-0 rounded-pill bg-positive" aria-hidden="true" />
+          <span
+            className={
+              freshness.advancing
+                ? 'animate-live size-1 shrink-0 rounded-pill bg-positive'
+                : 'size-1 shrink-0 rounded-pill bg-line-strong'
+            }
+            aria-hidden="true"
+          />
           <span>
-            Index advanced <span className="text-ink-secondary">{freshness}</span>
+            Index advanced <span className="text-ink-secondary">{freshness.label}</span>
           </span>
         </p>
       ) : null}
