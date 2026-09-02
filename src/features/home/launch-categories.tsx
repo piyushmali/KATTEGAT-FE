@@ -75,24 +75,33 @@ function CategoryTile({
         href={`/categories/${id}`}
         className="group flex h-full flex-col p-5 transition-colors duration-300 hover:bg-surface-raised/50 sm:p-6"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex size-9 items-center justify-center rounded-control border border-amber-dim/25 bg-amber-wash/30">
-            <Icon className="size-4 text-amber" aria-hidden="true" />
-          </div>
+        {/*
+         * The count leads, and the icon lost its badge.
+         *
+         * This row used to be split: an amber bordered box holding a glyph on the left, the
+         * figure pushed to the right. The glyph won a 36px frame and the accent colour while
+         * the only fact on the tile sat opposite it, right-aligned against nothing — and the
+         * badge was the same icon-in-a-box device the empty, error and hiring surfaces have
+         * all since dropped.
+         *
+         * So the tile reads top-down now: how many, of what, described, then the way in. The
+         * glyph still helps four categories stay distinguishable at a glance, so it stays —
+         * inline against the name, at the weight of a mark rather than a button.
+         */}
+        {isLoading ? (
+          <Skeleton className="h-7 w-16" />
+        ) : (
+          <p className="display tabular text-2xl leading-none text-ink">
+            {formatCount(count ?? 0)}
+          </p>
+        )}
+        <p className="eyebrow mt-2">{count === 1 ? 'agent' : 'agents'}</p>
 
-          {isLoading ? (
-            <Skeleton className="h-6 w-14" />
-          ) : (
-            <div className="text-right">
-              <p className="display tabular text-xl leading-none text-ink">
-                {formatCount(count ?? 0)}
-              </p>
-              <p className="eyebrow mt-1.5">{count === 1 ? 'agent' : 'agents'}</p>
-            </div>
-          )}
-        </div>
-
-        <h3 className="display mt-5 text-lg leading-tight text-ink transition-colors duration-300 group-hover:text-amber-bright">
+        <h3 className="display mt-6 flex items-baseline gap-2 text-lg leading-tight text-ink transition-colors duration-300 group-hover:text-amber-bright">
+          <Icon
+            className="size-3.5 shrink-0 translate-y-px text-amber-dim transition-colors duration-300 group-hover:text-amber"
+            aria-hidden="true"
+          />
           {CATEGORY_LABELS[id]}
         </h3>
 
