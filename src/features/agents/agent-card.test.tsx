@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { listAgentsResponseSchema } from '../../lib/api/contract';
+import { listAgentsResponseSchema, type Agent } from '../../lib/api/contract';
 import { mockListAgents } from '../../lib/api/mock-data';
 import { AgentCard } from './agent-card';
 
@@ -118,6 +118,88 @@ describe('AgentCard', () => {
 
     // The card previews capabilities so a browsing user can judge fit before opening it.
     expect(screen.getByText('rebalance')).toBeInTheDocument();
+  });
+
+  /**
+   * The card's middle line, for the very common agent that publishes an endpoint and never
+   * fills in a capability list. It used to read "No capabilities declared" — the least
+   * useful true sentence available about an agent that is, in fact, callable.
+   *
+   * Worth testing beyond the happy path because the fallback chain reads an operator-supplied
+   * string: `new URL()` throws on values that are not URLs, and the registry is full of
+   * `mcp://` schemes and CAIP-10 references. A throw here would take out the whole grid.
+   */
+  describe('an agent with an endpoint but no declared capabilities', () => {
+    const withEndpoint = (endpoint: Partial<Agent['profile']['endpoints'][number]>): Agent => {
+      const base = byId('56:900001');
+      return {
+        ...base,
+        profile: {
+          ...base.profile,
+          capabilities: [],
+          endpoints: [
+            { label: null, value: '', url: null, kind: 'a2a', version: null, ...endpoint },
+          ],
+        },
+      };
+    };
+
+    it('prefers the label the operator published', () => {
+      render(<AgentCard agent={withEndpoint({ label: 'Agent card', value: 'https://a.example/x' })} />);
+
+      expect(screen.getByText('Agent card')).toBeInTheDocument();
+      expect(screen.queryByText(/no capabilities declared/i)).not.toBeInTheDocument();
+    });
+
+    it('falls back to the host, not the whole URL', () => {
+      render(
+        <AgentCard
+          agent={withEndpoint({
+            value: 'https://tidewater.example/v1/mcp/very/long/path',
+            url: 'https://tidewater.example/v1/mcp/very/long/path',
+          })}
+        />,
+      );
+
+      // The host is the part worth the line; a path tells a scanning reader nothing.
+      expect(screen.getByText('tidewater.example')).toBeInTheDocument();
+    });
+
+    it('reads the host out of a non-http scheme', () => {
+      // The registry is full of these; `new URL` parses them, so the host is still the answer.
+      render(<AgentCard agent={withEndpoint({ value: 'mcp://gate.example', url: 'mcp://gate.example' })} />);
+
+      expect(screen.getByText('gate.example')).toBeInTheDocument();
+    });
+
+    it('shows the raw value when the scheme carries no host', () => {
+      /*
+       * A CAIP-10 reference parses without throwing and yields an empty host. Returning that
+       * would print an empty line where a fact was promised.
+       */
+      const caip = 'eip155:56:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432';
+      render(<AgentCard agent={withEndpoint({ value: caip, url: caip })} />);
+
+      expect(screen.getByText(caip)).toBeInTheDocument();
+    });
+
+    it('does not throw on a value that is not a URL at all', () => {
+      const agent = withEndpoint({ value: 'reachable by carrier pigeon', url: 'not a url' });
+
+      expect(() => render(<AgentCard agent={agent} />)).not.toThrow();
+      expect(screen.getByText('reachable by carrier pigeon')).toBeInTheDocument();
+    });
+
+    it('still says so when there is genuinely nothing to report', () => {
+      const base = byId('56:900001');
+      render(
+        <AgentCard
+          agent={{ ...base, profile: { ...base.profile, capabilities: [], endpoints: [] } }}
+        />,
+      );
+
+      expect(screen.getByText(/no capabilities declared/i)).toBeInTheDocument();
+    });
   });
 
   it('renders every fixture without throwing', () => {

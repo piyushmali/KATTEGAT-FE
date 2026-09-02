@@ -45,21 +45,47 @@ export function EcosystemStats() {
     },
   ];
 
+  /*
+   * Figures at display scale on hairlines, with no box around them.
+   *
+   * This section used to disagree with `HeroIndexStrip` twenty lines below it, which had
+   * already worked out the right answer: the number is the persuasive thing, so it should be
+   * the largest thing. Here the same counts sat at `text-2xl` in the sans face inside four
+   * filled cells with a border around the set — a stat widget, and a smaller number than the
+   * one in the hero it was meant to expand on.
+   *
+   * The container is gone. Four figures divided by rules need no frame, and removing it lets
+   * them sit directly on the page's own ground rather than on a lighter surface floating over
+   * it. Columns are deliberately unequal: the indexed total is the headline count and the
+   * other three qualify it, so it gets the wider measure.
+   *
+   * Rules run horizontally when the grid stacks and vertically when it does not, so the
+   * division always reads along the axis the eye is travelling.
+   */
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-9 lg:grid-cols-[1.3fr_1fr_1fr_1fr] lg:gap-x-0">
       {items.map((item) => (
-        <div key={item.label} className="bg-surface-raised px-4 py-4 sm:px-5 sm:py-5">
-          <dt className="text-2xs tracking-wide text-ink-faint uppercase">{item.label}</dt>
-          <dd className="mt-2">
+        <div
+          key={item.label}
+          /*
+           * Whitespace divides the stacked layout and rules divide the single row. Drawing
+           * rules at both sizes needs them on different edges per breakpoint, and the
+           * two-column case ends up with a rule above the second cell only, which reads as
+           * a mistake. Air is the better divider when the grid wraps anyway.
+           */
+          className="lg:border-l lg:border-line lg:pl-6 lg:first:border-l-0 lg:first:pl-0"
+        >
+          <dt className="eyebrow">{item.label}</dt>
+          <dd className="mt-3">
             {isLoading || item.value === undefined ? (
-              <Skeleton className="h-7 w-20" />
+              <Skeleton className="h-9 w-28" />
             ) : (
-              <span className="tabular text-2xl leading-none font-semibold tracking-tight text-ink">
+              <span className="display tabular text-display-sm text-ink">
                 {formatCount(item.value)}
               </span>
             )}
           </dd>
-          <p className="mt-1.5 text-3xs text-ink-faint">{item.note}</p>
+          <p className="mt-2 text-3xs text-ink-faint">{item.note}</p>
         </div>
       ))}
     </dl>

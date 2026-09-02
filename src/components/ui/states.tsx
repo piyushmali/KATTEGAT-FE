@@ -107,14 +107,52 @@ export function AgentProfileSkeleton() {
           </div>
         </div>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <div className="space-y-4">
-          <Skeleton className="h-40 rounded-panel" />
-          <Skeleton className="h-52 rounded-panel" />
-          <Skeleton className="h-44 rounded-panel" />
+      {/*
+       * Mirrors the profile's three tiers, not a flat stack.
+       *
+       * Kept in step by hand, and it drifted the moment the real page was retiered: the
+       * body went to `space-y-14` groups behind section rules with a wider rail gutter,
+       * while this still described one `space-y-4` column. The cost of that drift is the
+       * whole reason this component exists — the page visibly jumped as data landed, which
+       * is worse than no skeleton at all, because it looks like a second render rather
+       * than a load.
+       */}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-12">
+        <div className="space-y-14">
+          {/* Evidence: a section rule, then three lead panels. */}
+          <div className="space-y-4">
+            <TierRuleSkeleton />
+            <Skeleton className="h-40 rounded-panel" />
+            <Skeleton className="h-52 rounded-panel" />
+            <Skeleton className="h-44 rounded-panel" />
+          </div>
+          {/* KATTEGAT's reading. */}
+          <div className="space-y-4">
+            <TierRuleSkeleton />
+            <Skeleton className="h-36 rounded-panel" />
+          </div>
+          {/* Reference: boxless, so bars rather than panels. */}
+          <div className="space-y-4">
+            <TierRuleSkeleton />
+            <div className="space-y-2.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-11/12" />
+              <Skeleton className="h-3 w-4/5" />
+            </div>
+          </div>
         </div>
         <Skeleton className="h-72 rounded-panel" />
       </div>
+    </div>
+  );
+}
+
+/** The label-on-a-rule that opens each tier of the profile. */
+function TierRuleSkeleton() {
+  return (
+    <div className="flex items-baseline gap-4">
+      <Skeleton className="h-2.5 w-20" />
+      <span className="h-px flex-1 bg-line" aria-hidden="true" />
     </div>
   );
 }
@@ -147,21 +185,32 @@ export function EmptyState({
     <div
       className={cn(
         /*
-         * Dashed, and inset rather than raised — an empty result should read as a hollow
-         * in the page, not as a card containing the word "nothing". The title is set in
-         * the display serif because these are moments the product speaks to the user
-         * directly, and they deserve the same voice as the rest of it.
+         * A hollow in the page rather than a card containing the word "nothing": inset and
+         * dashed, so the region reads as the shape results would have filled.
+         *
+         * Left-aligned, and that is the whole change. A boxed icon centred above centred
+         * text over a centred button is the single most template-looking arrangement in
+         * interface design — it is what every scaffold ships, and no amount of good type
+         * inside it reads as authored. Setting it on the same left margin as the content
+         * it replaced, with the title at display scale, makes it look like a page that has
+         * something to say instead of a placeholder apologising.
          */
-        'flex flex-col items-center justify-center rounded-panel border border-dashed border-line-strong bg-surface-inset px-6 py-20 text-center',
+        'rounded-panel border border-dashed border-line-strong bg-surface-inset px-6 py-16 sm:px-10 sm:py-20',
         className,
       )}
     >
-      <div className="flex size-11 items-center justify-center rounded-control border border-line bg-surface-overlay/60">
-        <Icon className="size-4 text-ink-faint" aria-hidden="true" />
-      </div>
-      <h3 className="display mt-5 text-xl text-ink">{title}</h3>
-      <p className="mt-2.5 max-w-md text-xs leading-6 text-ink-muted">{description}</p>
-      {action ? <div className="mt-7">{action}</div> : null}
+      {/*
+       * The icon rides the eyebrow instead of sitting in a bordered badge above everything.
+       * It still carries the distinction between "nothing matched" and "nothing exists",
+       * and it no longer costs a 44px chrome element to say so.
+       */}
+      <p className="eyebrow flex items-center gap-2">
+        <Icon className="size-3.5" aria-hidden="true" />
+        Nothing here
+      </p>
+      <h3 className="display mt-4 max-w-reading text-display-sm text-ink">{title}</h3>
+      <p className="mt-3 max-w-reading text-xs leading-6 text-ink-muted">{description}</p>
+      {action ? <div className="mt-8">{action}</div> : null}
     </div>
   );
 }
@@ -194,21 +243,32 @@ export function ErrorState({
       // `alert` so assistive tech announces a failure the user did not trigger.
       role="alert"
       className={cn(
-        'flex flex-col items-center justify-center rounded-panel border border-critical/25 bg-critical-wash/12 px-6 py-18 text-center',
+        /*
+         * Left-aligned for the same reason as the empty state, and with the critical wash
+         * pulled back to a left edge rule instead of a full tinted panel. A page-wide red
+         * box shouts about a condition the user usually cannot act on; a marked edge and a
+         * plain explanation treat them as someone who can read.
+         */
+        'relative overflow-hidden rounded-panel border border-line bg-surface-inset px-6 py-14 sm:px-10',
         className,
       )}
     >
-      <div className="flex size-11 items-center justify-center rounded-control border border-critical/25 bg-critical-wash/40">
-        <Icon className="size-4 text-critical" aria-hidden="true" />
-      </div>
-      <h3 className="display mt-5 text-xl text-ink">{title}</h3>
-      <p className="mt-2.5 max-w-lg text-xs leading-6 text-ink-secondary">{detail}</p>
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-critical/60 to-transparent"
+      />
+      <p className="eyebrow flex items-center gap-2 text-critical/80">
+        <Icon className="size-3.5" aria-hidden="true" />
+        {upstream ? 'Upstream failure' : 'Something failed'}
+      </p>
+      <h3 className="display mt-4 max-w-reading text-display-sm text-ink">{title}</h3>
+      <p className="mt-3 max-w-reading text-xs leading-6 text-ink-secondary">{detail}</p>
       {requestId ? (
         // Quotable in a bug report. Mono, and dim enough not to alarm.
         <p className="mt-4 font-mono text-3xs text-ink-faint">ref {requestId}</p>
       ) : null}
       {onRetry ? (
-        <Button variant="secondary" size="sm" className="mt-7" onClick={onRetry}>
+        <Button variant="secondary" size="sm" className="mt-8" onClick={onRetry}>
           <RotateCw className="size-3.5" aria-hidden="true" />
           Try again
         </Button>

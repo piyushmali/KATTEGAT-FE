@@ -50,6 +50,46 @@ function primaryOf(categories: AgentCategoryAssignment[]): AgentCategoryAssignme
 }
 
 /**
+ * Where the agent can be reached, in as few characters as the card can afford.
+ *
+ * Exists because the middle of this card used to print "No capabilities declared" for a
+ * very large share of the grid — most agents that publish a working endpoint never fill in
+ * a capability list — and a card whose only middle line is a negative reads as a broken
+ * record. The endpoint was sitting in the same payload the whole time.
+ *
+ * Prefers the operator's own label, falls back to the host, and only then to the raw value.
+ * The host is the useful part of a URL at this size: a path tells a scanning reader nothing
+ * and spends the line it is printed on.
+ */
+function reachableAt(endpoints: Agent['profile']['endpoints']): string | null {
+  const endpoint =
+    endpoints.find((entry) => entry.kind === 'a2a' || entry.kind === 'mcp') ?? endpoints[0];
+  if (!endpoint) return null;
+
+  if (endpoint.label !== null && endpoint.label.length > 0) return endpoint.label;
+
+  if (endpoint.url !== null) {
+    try {
+      /*
+       * Two ways this does not yield a host, and both fall through rather than render blank.
+       *
+       * `new URL` throws only on a value with no scheme at all. It happily parses anything
+       * else, including the `mcp://` and `eip155:` forms the registry is full of — but for a
+       * scheme with no authority component, `host` comes back as the empty string. Returning
+       * that would print nothing where a fact was promised, which is worse than printing the
+       * raw value the operator published.
+       */
+      const { host } = new URL(endpoint.url);
+      if (host.length > 0) return host;
+    } catch {
+      /* no scheme; the raw value is the best available answer */
+    }
+  }
+
+  return endpoint.value.length > 0 ? endpoint.value : null;
+}
+
+/**
  * The escrow line for the footer, or null when there is nothing honest to put there.
  *
  * Three cases, not two. An agent can have escrow funded against it and nothing released yet,
@@ -103,6 +143,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
   const extraCapabilities = agent.profile.capabilities.length - capabilities.length;
 
   const paidWork = describePaidWork(agent.jobs);
+  const endpointHost = reachableAt(agent.profile.endpoints);
 
   return (
     <article
@@ -224,6 +265,16 @@ export function AgentCard({ agent }: { agent: Agent }) {
               <ShieldQuestion className="size-3" aria-hidden="true" />
               Metadata unresolved
             </Badge>
+          ) : endpointHost ? (
+            /*
+             * A fact instead of an absence. An agent that declares no capabilities but does
+             * publish somewhere to call it is not an empty record, and saying "No capabilities
+             * declared" was the least useful true sentence available about it.
+             */
+            <p className="flex items-baseline gap-1.5 truncate text-2xs text-ink-secondary">
+              <span className="text-ink-faint">Reachable at</span>
+              <span className="truncate font-mono text-ink-secondary">{endpointHost}</span>
+            </p>
           ) : (
             <span className="text-2xs text-ink-faint">No capabilities declared</span>
           )}
