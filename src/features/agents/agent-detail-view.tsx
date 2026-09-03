@@ -6,6 +6,7 @@ import { AgentImage } from '../../components/ui/agent-image';
 import { Badge, StatusDot } from '../../components/ui/badge';
 import { Panel, PanelHeader, SectionRule, type PanelWeight } from '../../components/ui/card';
 import { AgentProfileSkeleton, ErrorState } from '../../components/ui/states';
+import { WakingNotice } from '../../components/ui/waking-notice';
 import { ApiError, describeError } from '../../lib/api/errors';
 import { CATEGORY_LABELS, describeInterface } from '../../lib/api/contract';
 import { agentIdentityUrl } from '../../lib/web3/chain';
@@ -37,6 +38,7 @@ export function AgentDetailView({ id }: { id: string }) {
   if (agentQuery.isLoading) {
     return (
       <div className="mx-auto max-w-shell px-4 py-12 sm:px-6 lg:px-8">
+        <WakingNotice className="animate-rise mb-8 flex items-start gap-2.5 text-2xs leading-5 text-ink-muted" />
         <AgentProfileSkeleton />
       </div>
     );

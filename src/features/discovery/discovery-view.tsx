@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { AgentGridSkeleton, EmptyState, ErrorState } from '../../components/ui/states';
+import { WakingNotice } from '../../components/ui/waking-notice';
 import { AgentCard } from '../agents/agent-card';
 import { ApiError, describeError } from '../../lib/api/errors';
 import { isMockMode } from '../../config/env';
@@ -172,7 +173,15 @@ export function DiscoveryView() {
        * appears for a few hundred milliseconds.
        */}
       {active.isLoading ? (
-        <AgentGridSkeleton count={9} />
+        <div className="space-y-5">
+          {/*
+           * Mounted only while loading, so unmounting on success is what cancels its timer.
+           * The grid below is unchanged — this adds an explanation above a wait, it does not
+           * replace the shape of the thing being waited for.
+           */}
+          <WakingNotice />
+          <AgentGridSkeleton count={9} />
+        </div>
       ) : active.isError ? (
         <ErrorState
           {...describeError(active.error)}

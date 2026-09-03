@@ -21,12 +21,21 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             staleTime: 30_000,
             gcTime: 5 * 60_000,
             refetchOnWindowFocus: false,
+            /*
+             * One retry, not two, because the per-request budget is now 75 seconds.
+             *
+             * That budget exists to survive a cold start on a free host that sleeps after 15
+             * minutes and takes 50 seconds or more to wake. Once a single attempt can absorb
+             * that, further attempts stop being resilience and become a way to make a real
+             * outage take four minutes to report: three attempts at 75 seconds is worse for
+             * the user than one honest failure.
+             */
             retry: (failureCount, error) => {
               // Retrying a 404 or a contract mismatch just delays the error UI.
               if (error instanceof ApiError && !error.isRetryable) return false;
-              return failureCount < 2;
+              return failureCount < 1;
             },
-            retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 8_000),
+            retryDelay: () => 1_500,
           },
         },
       }),

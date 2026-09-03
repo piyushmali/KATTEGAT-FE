@@ -46,7 +46,27 @@ import {
  *     HTTP and schema failures included.
  */
 
-const REQUEST_TIMEOUT_MS = 15_000;
+/**
+ * Read budget, sized for a host that sleeps.
+ *
+ * 15 seconds was right for a warm API and catastrophic for a cold one. The API runs on a free
+ * Render instance, which spins down after 15 minutes of inactivity and then takes, in Render's
+ * own words, "50 seconds or more" to answer the request that wakes it.
+ *
+ * The old numbers made that a guaranteed failure. Three attempts at 15s with 1s and 2s of
+ * backoff is a total budget of 48 seconds — expiring a couple of seconds *before* the service
+ * finishes starting. So the one visitor most worth impressing, the one who arrives when nobody
+ * has been here for a while, was shown an error page by a service that was seconds from being
+ * ready. It could not have been timed worse if it had been designed to fail.
+ *
+ * 75 seconds clears a documented cold start with room to spare. The cost is that a genuine
+ * outage takes longer to report, which is why the retry count came down to one alongside this:
+ * if 75 seconds was not enough, the service is not waking up and two more attempts are noise.
+ *
+ * This is a safety net, not the fix. The fix is not letting the instance sleep — see
+ * `.github/workflows/keepalive.yml` and the deployment notes on external pinging.
+ */
+const REQUEST_TIMEOUT_MS = 75_000;
 
 /**
  * Budget for a request that settles a transaction on chain.
