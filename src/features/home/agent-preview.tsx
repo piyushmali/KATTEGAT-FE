@@ -117,9 +117,23 @@ export function AgentPreview() {
                       </p>
                     </div>
 
-                    {/* Fixed-width so the column aligns rather than ragging by label. */}
-                    <span className="eyebrow hidden w-36 shrink-0 text-right text-amber/75 lg:block">
-                      {classified ? CATEGORY_LABELS[primary.category] : ''}
+                    {/*
+                     * Fixed-width so the column aligns rather than ragging by label.
+                     *
+                     * An unclassified agent reads "Unclassified" in faint ink rather than a blank
+                     * cell. The blank looked like a rendering fault — a row that had lost its
+                     * category — when the truth is that KATTEGAT could not confidently place the
+                     * agent and says so. Same amber label for a real category, same honest word
+                     * for the absence, so the column never has an unexplained hole in it.
+                     */}
+                    <span
+                      className={
+                        classified
+                          ? 'eyebrow hidden w-36 shrink-0 text-right text-amber/75 lg:block'
+                          : 'eyebrow hidden w-36 shrink-0 text-right text-ink-faint lg:block'
+                      }
+                    >
+                      {classified ? CATEGORY_LABELS[primary.category] : 'Unclassified'}
                     </span>
 
                     <span className="tabular hidden w-24 shrink-0 text-right text-2xs text-ink-faint sm:block">

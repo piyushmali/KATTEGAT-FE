@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { InlineSpinner } from '../../components/ui/states';
 import type { HiringContext } from '../../lib/api/contract';
-import { describeError } from '../../lib/api/errors';
+import { describeWeb3Error } from '../../lib/api/errors';
 import { useCommissionWork } from './use-hiring';
 
 /**
@@ -174,7 +174,7 @@ export function CommissionForm({
 
       {commission.isError ? (
         <p role="alert" className="mt-2 text-2xs leading-5 text-critical">
-          {describeError(commission.error).title}. {describeError(commission.error).detail}
+          {describeWeb3Error(commission.error).title}. {describeWeb3Error(commission.error).detail}
         </p>
       ) : null}
 

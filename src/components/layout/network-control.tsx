@@ -9,12 +9,11 @@ import {
   useConnectors,
   useDisconnect,
   useReconnect,
-  useSwitchChain,
 } from 'wagmi';
-import { AlertTriangle, LogOut, Wallet } from 'lucide-react';
+import { LogOut, Wallet } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils/cn';
-import { EXPECTED_CHAIN_ID, truncateAddress } from '../../lib/web3/chain';
+import { truncateAddress } from '../../lib/web3/chain';
 
 /**
  * Network and wallet state, as one control.
@@ -93,80 +92,44 @@ function useSilentReconnect() {
 export function NetworkControl() {
   useSilentReconnect();
 
-  const { address, isConnected, chainId, connector } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const { disconnect } = useDisconnect();
-  const { switchChain, isPending: isSwitching } = useSwitchChain();
 
-  const wrongNetwork = isConnected && chainId !== EXPECTED_CHAIN_ID;
-
+  /*
+   * No "wrong network" warning, and no chain switch. Both were removed because they policed a
+   * wallet that this product never uses.
+   *
+   * Every read here comes from the KATTEGAT backend, and every on-chain action in the hire flow
+   * is signed by a passkey through the Altana SDK on the network the backend chooses — see
+   * lib/web3/agent-authority.ts. The injected EVM wallet is not the signer for anything, so its
+   * chain is irrelevant, and a warning comparing it to BNB mainnet was worse than irrelevant: it
+   * was a permanent amber alarm that could not be satisfied. Switching to "the right network"
+   * fixed the warning and changed nothing that mattered, and it actively misled — a viewer read
+   * it as "connect and switch to hire", when hiring needs neither.
+   *
+   * Connecting is kept as optional identity, and it is genuinely optional: nothing on the site
+   * requires it, and it is not a step in the hire flow.
+   */
   return (
     <div className="flex items-center gap-2">
-      {/*
-       * The network is only mentioned when it is a problem.
-       *
-       * A permanent "BNB Smart Chain" chip was pure noise: the whole product is BNB-only,
-       * it says so in the hero and the footer, and a status indicator that never changes
-       * teaches people to stop reading it. Now the chip appears exactly when it carries
-       * information the user has to act on, which is also when the "Switch" button next to
-       * it becomes relevant.
-       */}
-      {wrongNetwork ? (
-        <div className="hidden items-center gap-2 rounded-control border border-caution/30 bg-caution-wash/15 px-2.5 py-1.5 sm:flex">
-          <span className="size-1.5 shrink-0 rounded-pill bg-caution" aria-hidden="true" />
-          <span className="text-2xs font-medium text-caution">Wrong network</span>
-        </div>
-      ) : null}
-
       {isConnected ? (
-        <>
-          {wrongNetwork ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={isSwitching}
-              className="text-caution ring-caution/40"
-              onClick={() => {
-                // Declining the network switch is a normal user choice, not an error.
-                switchChain({ chainId: EXPECTED_CHAIN_ID }, { onError: () => undefined });
-              }}
-            >
-              <AlertTriangle className="size-3.5" aria-hidden="true" />
-              {isSwitching ? 'Switching…' : 'Switch to BNB'}
-            </Button>
-          ) : null}
-
-          {/*
-           * Rendered whenever a wallet is attached, including on the wrong network.
-           * Previously the wrong-network branch replaced this button, which left the
-           * only escape route behind the very switch that was failing — a wallet that
-           * cannot add BNB Smart Chain, or a wallet the user never meant to connect,
-           * had no way out. Disconnecting is how you get back to the picker.
-           */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              disconnect();
-            }}
-            title={
-              connector ? `${connector.name} · ${address ?? ''} (click to disconnect)` : address
-            }
-            aria-label={`Disconnect ${connector?.name ?? 'wallet'} ${address ?? ''}`}
-            className="group"
-          >
-            {/*
-             * The wallet's own icon. Worth the space: the entire wrong-wallet problem
-             * was invisible because the header showed an address without saying which
-             * extension produced it.
-             */}
-            {connector ? <WalletIcon connector={connector} size="sm" /> : null}
-            <span className="font-mono">{address ? truncateAddress(address, 4) : 'Connected'}</span>
-            <LogOut
-              className="size-3 text-ink-faint transition-colors group-hover:text-ink-secondary"
-              aria-hidden="true"
-            />
-          </Button>
-        </>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            disconnect();
+          }}
+          title={connector ? `${connector.name} · ${address ?? ''} (click to disconnect)` : address}
+          aria-label={`Disconnect ${connector?.name ?? 'wallet'} ${address ?? ''}`}
+          className="group"
+        >
+          {connector ? <WalletIcon connector={connector} size="sm" /> : null}
+          <span className="font-mono">{address ? truncateAddress(address, 4) : 'Connected'}</span>
+          <LogOut
+            className="size-3 text-ink-faint transition-colors group-hover:text-ink-secondary"
+            aria-hidden="true"
+          />
+        </Button>
       ) : (
         <ConnectWallet />
       )}

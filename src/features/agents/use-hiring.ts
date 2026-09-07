@@ -104,6 +104,11 @@ export function useHireAgent(agentId: string) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: hiringKeys.sessions(agentId) });
     },
+    // The panel shows the error's own message; this keeps the full object, including any SDK
+    // cause chain and stack, reachable in the console for diagnosis.
+    onError: (error) => {
+      console.error('[kattegat] hire failed', error);
+    },
   });
 }
 
@@ -141,6 +146,9 @@ export function useRevokeAgent(agentId: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: hiringKeys.sessions(agentId) });
+    },
+    onError: (error) => {
+      console.error('[kattegat] revoke failed', error);
     },
   });
 }
@@ -240,6 +248,9 @@ export function useCommissionWork(agentId: string) {
         queryClient.invalidateQueries({ queryKey: agentKeys.jobs(agentId) }),
         queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) }),
       ]);
+    },
+    onError: (error) => {
+      console.error('[kattegat] commission failed', error);
     },
   });
 }

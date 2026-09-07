@@ -75,6 +75,59 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
   });
 }
 
+/**
+ * Copy for a failure in the on-chain hire flow (grant, revoke, commission).
+ *
+ * Separate from {@link describeError} because those failures are not `ApiError`s — they are
+ * raw errors from the passkey, the Altana SDK or viem — and routing them through the API
+ * describer flattened every one of them to "an unexpected error occurred". That threw away the
+ * only useful thing the error had: its message. During a demo it turned a readable cause into a
+ * shrug, and it hid meaningful thrown messages like "this browser has no agent authority stored"
+ * behind a generic one.
+ *
+ * Three cases it actually distinguishes:
+ *  - a backend step failing (sponsorGas, recordSession) is still an ApiError, so defer to the
+ *    API describer for those;
+ *  - the user dismissing the biometric prompt is not an error at all, and saying "declined" is
+ *    calmer and truer than "something went wrong";
+ *  - anything else surfaces its real message, capped so a long viem revert string does not
+ *    overrun the panel.
+ *
+ * The message is the point. It is what lets the operator — or a judge — see that the passkey was
+ * cancelled, or the relay is down, or a contract reverted, rather than being told nothing.
+ */
+export function describeWeb3Error(error: unknown): { title: string; detail: string } {
+  if (error instanceof ApiError) return describeError(error);
+
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+
+  // WebAuthn cancellation surfaces as a NotAllowedError DOMException, or as a message the
+  // wallet/SDK phrases in one of these ways. This is a choice the user made, not a fault.
+  const dismissed =
+    (typeof DOMException !== 'undefined' &&
+      error instanceof DOMException &&
+      error.name === 'NotAllowedError') ||
+    /\b(rejected|denied|cancell?ed|dismiss|abort|not allowed|user declined)\b/i.test(raw);
+
+  if (dismissed) {
+    return {
+      title: 'Approval dismissed',
+      detail: 'Nothing was signed or sent. Choose the terms again and approve with your device.',
+    };
+  }
+
+  if (raw.length > 0) {
+    // Capped, and stripped of the noisy stack-y tail viem appends after the first sentence.
+    const firstLine = raw.split('\n')[0]!.trim();
+    return {
+      title: 'The hire did not complete',
+      detail: firstLine.length > 160 ? `${firstLine.slice(0, 157)}…` : firstLine,
+    };
+  }
+
+  return { title: 'The hire did not complete', detail: 'An unexpected error occurred. Try again.' };
+}
+
 /** Copy for the states the UI actually needs to distinguish. */
 export function describeError(error: unknown): { title: string; detail: string } {
   if (!(error instanceof ApiError)) {

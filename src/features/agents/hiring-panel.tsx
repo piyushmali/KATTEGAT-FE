@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { InlineSpinner, Skeleton } from '../../components/ui/states';
-import { describeError } from '../../lib/api/errors';
+import { describeWeb3Error } from '../../lib/api/errors';
 import { formatDate } from '../../lib/utils/format';
 import { truncateAddress } from '../../lib/web3/chain';
 import type { AgentSession, SpendPeriod } from '../../lib/api/contract';
@@ -355,7 +355,7 @@ export function HiringPanel({
 
               {hire.isError ? (
                 <p role="alert" className="text-2xs leading-5 text-critical">
-                  {describeError(hire.error).title}. {describeError(hire.error).detail}
+                  {describeWeb3Error(hire.error).title}. {describeWeb3Error(hire.error).detail}
                 </p>
               ) : null}
             </div>
@@ -402,7 +402,7 @@ export function HiringPanel({
             </ul>
             {revoke.isError ? (
               <p role="alert" className="mt-2 text-2xs leading-5 text-critical">
-                {describeError(revoke.error).title}. The session is still active.
+                {describeWeb3Error(revoke.error).detail} The session is still active.
               </p>
             ) : null}
           </div>

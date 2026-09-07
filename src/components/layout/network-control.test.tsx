@@ -103,11 +103,20 @@ describe('NetworkControl session restore', () => {
     expect(config.state.status).toBe('disconnected');
   });
 
-  it('offers a way out when the wallet is on the wrong network', async () => {
+  it('raises no network warning, because the injected wallet governs nothing', async () => {
     /*
-     * A wallet answering on Ethereum mainnet while the app is BNB-only — precisely what
-     * an EVM-capable Solana wallet does, and the reason the header read "wrong network"
-     * while the user's actual MetaMask sat on BNB Chain.
+     * This used to assert a "Switch to BNB" button appeared for a wallet on the wrong chain.
+     * That behaviour was removed, and its removal is the point of this test now.
+     *
+     * The injected EVM wallet is not the signer for any action in the product — reads go through
+     * the backend, and the hire flow signs with a passkey on the network the backend chooses. So
+     * the wallet's chain is irrelevant, and the old warning was a permanent amber alarm a user
+     * could never satisfy: it fired for a Solana wallet's Ethereum-mainnet answer, and it also
+     * fired for a real MetaMask sitting correctly on BNB Chain, because the app expects mainnet
+     * (56) while hiring runs on testnet (97). Switching "fixed" the warning and changed nothing.
+     *
+     * So a wallet on any chain now simply shows as connected, with a way to disconnect, and no
+     * warning and no switch button.
      */
     const config = buildConfig([wallet('io.metamask', REMEMBERED, mainnet.id)]);
     await config.storage?.setItem('recentConnectorId', 'io.metamask');
@@ -117,17 +126,15 @@ describe('NetworkControl session restore', () => {
     await waitFor(() => {
       expect(config.state.status).toBe('connected');
     });
-    // The wallet's chain, not the app's configured one — that is what the warning reads.
+    // The wallet is genuinely on a chain the app does not configure.
     const [connection] = [...config.state.connections.values()];
     expect(connection?.chainId).not.toBe(bsc.id);
 
-    expect(screen.getByRole('button', { name: /switch to bnb/i })).toBeTruthy();
+    // No false alarm, and no pointless switch.
+    expect(screen.queryByText(/wrong network/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /switch to bnb/i })).toBeNull();
 
-    /*
-     * Disconnect has to stay reachable alongside that warning. It used to be replaced
-     * by it, which trapped anyone whose wallet could not switch to BNB Smart Chain: the
-     * only escape was behind the very button that was failing.
-     */
+    // Disconnect stays reachable, which is the only control the header needs to offer here.
     expect(screen.getByRole('button', { name: /disconnect/i })).toBeTruthy();
   });
 });
