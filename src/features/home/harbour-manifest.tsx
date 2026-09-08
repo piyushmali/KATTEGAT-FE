@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { Skeleton } from '../../components/ui/states';
-import { CATEGORY_LABELS } from '../../lib/api/contract';
+import { displayCategory } from '../../lib/api/contract';
 import { formatCount } from '../../lib/utils/format';
 import { useAgents, useStats } from '../discovery/use-agents';
 
@@ -97,9 +97,7 @@ export function HarbourManifest() {
               </li>
             ))
           : agents.map((agent) => {
-              const primary =
-                agent.categories.find((entry) => entry.isPrimary) ?? agent.categories[0];
-              const classified = primary && primary.category !== 'uncategorized';
+              const { label: categoryLabel } = displayCategory(agent.categories);
 
               return (
                 <li key={agent.identity.id}>
@@ -121,16 +119,18 @@ export function HarbourManifest() {
                         aria-hidden="true"
                       />
                     </span>
+                    {/*
+                     * The label always renders. An unclassified agent reads "Unclassified" rather
+                     * than stopping after the id — a row ending mid-line while its neighbours
+                     * carried a category read as data that had failed to load, when the truth is
+                     * that KATTEGAT could not confidently place the agent.
+                     */}
                     <span className="mt-1 flex items-center gap-1.5 text-3xs text-ink-faint">
                       <span className="tabular font-mono">#{agent.identity.agentId}</span>
-                      {classified ? (
-                        <>
-                          <span className="text-line-strong" aria-hidden="true">
-                            /
-                          </span>
-                          <span className="truncate">{CATEGORY_LABELS[primary.category]}</span>
-                        </>
-                      ) : null}
+                      <span className="text-line-strong" aria-hidden="true">
+                        /
+                      </span>
+                      <span className="truncate">{categoryLabel}</span>
                     </span>
                   </Link>
                 </li>

@@ -5,7 +5,7 @@ import type { CSSProperties } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { AgentImage } from '../../components/ui/agent-image';
 import { Skeleton } from '../../components/ui/states';
-import { CATEGORY_LABELS } from '../../lib/api/contract';
+import { displayCategory } from '../../lib/api/contract';
 import { firstSentence, formatDate } from '../../lib/utils/format';
 import { useAgents } from '../discovery/use-agents';
 
@@ -68,9 +68,7 @@ export function AgentPreview() {
               </li>
             ))
           : (data?.data ?? []).map((agent) => {
-              const primary =
-                agent.categories.find((entry) => entry.isPrimary) ?? agent.categories[0];
-              const classified = primary && primary.category !== 'uncategorized';
+              const { classified, label: categoryLabel } = displayCategory(agent.categories);
               const registered = formatDate(agent.identity.registeredAt);
 
               return (
@@ -133,7 +131,7 @@ export function AgentPreview() {
                           : 'eyebrow hidden w-36 shrink-0 text-right text-ink-faint lg:block'
                       }
                     >
-                      {classified ? CATEGORY_LABELS[primary.category] : 'Unclassified'}
+                      {categoryLabel}
                     </span>
 
                     <span className="tabular hidden w-24 shrink-0 text-right text-2xs text-ink-faint sm:block">

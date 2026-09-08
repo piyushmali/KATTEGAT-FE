@@ -69,6 +69,38 @@ export const CATEGORY_LABELS: Record<AgentCategoryId, string> = {
 };
 
 /**
+ * The category to display for an agent, and whether KATTEGAT actually placed it.
+ *
+ * Four surfaces derive this — the agent card, the detail header, the landing register and the
+ * arrivals manifest — and each used to do it inline: find the primary assignment, fall back to
+ * the first, treat `uncategorized` as unplaced, then write the word "Unclassified" as a literal
+ * in its own else-branch.
+ *
+ * One of the four forgot the else-branch and rendered nothing, so a genuinely unclassified agent
+ * showed a row that stopped after its id and read as data that had failed to load. It was fixed
+ * once in the register and the manifest was missed, because the fix was a per-component patch
+ * rather than the shared idea.
+ *
+ * There is no else-branch to forget now. `CATEGORY_LABELS.uncategorized` is already
+ * "Unclassified", so the label is a total function over the input: an agent with no assignments
+ * at all still gets the honest word, and no caller can produce a blank.
+ *
+ * `classified` stays separate because it is a styling decision, not a labelling one — a real
+ * category is set in amber, an absence in faint ink or an outline badge.
+ */
+export function displayCategory(categories: readonly AgentCategoryAssignment[]): {
+  classified: boolean;
+  label: string;
+} {
+  const primary = categories.find((entry) => entry.isPrimary) ?? categories[0];
+
+  return {
+    classified: primary !== undefined && primary.category !== 'uncategorized',
+    label: CATEGORY_LABELS[primary?.category ?? 'uncategorized'],
+  };
+}
+
+/**
  * The protocol tag as a phrase a visitor can act on.
  *
  * Lives beside `CATEGORY_LABELS` for the same reason: both turn a wire enum into display

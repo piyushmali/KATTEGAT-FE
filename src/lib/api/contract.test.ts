@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   agentSchema,
+  AGENT_CATEGORIES,
+  displayCategory,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
   reputationResponseSchema,
@@ -258,6 +260,56 @@ describe('every fixture score stays on the scale ERC-8004 defines', () => {
       const score = agent.reputation?.score;
       expect(score, `${agent.identity.id} score`).toBeGreaterThanOrEqual(0);
       expect(score, `${agent.identity.id} score`).toBeLessThanOrEqual(100);
+    }
+  });
+});
+
+/**
+ * The category label must never come back empty.
+ *
+ * Four surfaces derive this and each used to do it inline, with the "Unclassified" fallback as a
+ * literal in its own else-branch. One of the four omitted the branch and rendered nothing, so an
+ * unclassified agent showed a row that stopped after its id and read as data that had failed to
+ * load. Fixing it per-component left a sibling broken; these cases pin the shared function so a
+ * blank cannot come back.
+ */
+describe('displayCategory', () => {
+  const assignment = (category: string, isPrimary: boolean) =>
+    ({ category, confidence: 0.9, isPrimary, signals: [] }) as unknown as Parameters<
+      typeof displayCategory
+    >[0][number];
+
+  it('prefers the primary assignment over the first', () => {
+    const result = displayCategory([
+      assignment('research-analytics', false),
+      assignment('grid-trading', true),
+    ]);
+
+    expect(result).toEqual({ classified: true, label: 'Grid Trading' });
+  });
+
+  it('falls back to the first when none is marked primary', () => {
+    expect(displayCategory([assignment('rebalancing', false)])).toEqual({
+      classified: true,
+      label: 'Rebalancing',
+    });
+  });
+
+  it('labels an explicitly uncategorized agent rather than leaving it blank', () => {
+    expect(displayCategory([assignment('uncategorized', true)])).toEqual({
+      classified: false,
+      label: 'Unclassified',
+    });
+  });
+
+  it('labels an agent with no assignments at all', () => {
+    // The case that produced the blank row: nothing to read a category from.
+    expect(displayCategory([])).toEqual({ classified: false, label: 'Unclassified' });
+  });
+
+  it('never returns an empty label for any category in the taxonomy', () => {
+    for (const category of AGENT_CATEGORIES) {
+      expect(displayCategory([assignment(category, true)]).label).not.toBe('');
     }
   });
 });

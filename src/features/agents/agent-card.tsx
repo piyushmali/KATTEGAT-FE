@@ -5,8 +5,8 @@ import { Badge, StatusDot } from '../../components/ui/badge';
 import {
   CATEGORY_LABELS,
   describeInterface,
+  displayCategory,
   type Agent,
-  type AgentCategoryAssignment,
 } from '../../lib/api/contract';
 import { formatScore } from '../../lib/utils/format';
 import { truncateAddress } from '../../lib/web3/chain';
@@ -44,10 +44,6 @@ const TRAIT_PRIORITY: { trait: string; label: string; tone: 'info' | 'amber' | '
   { trait: 'x402-paid', label: 'x402', tone: 'amber' },
   { trait: 'multichain', label: 'Multichain', tone: 'neutral' },
 ];
-
-function primaryOf(categories: AgentCategoryAssignment[]): AgentCategoryAssignment | null {
-  return categories.find((entry) => entry.isPrimary) ?? categories[0] ?? null;
-}
 
 /**
  * Where the agent can be reached, in as few characters as the card can afford.
@@ -147,9 +143,8 @@ function evidenceStrength(agent: Agent): number {
 }
 
 export function AgentCard({ agent }: { agent: Agent }) {
-  const primary = primaryOf(agent.categories);
+  const { classified, label: categoryLabel } = displayCategory(agent.categories);
   const secondaryCount = agent.categories.filter((entry) => !entry.isPrimary).length;
-  const classified = primary !== null && primary.category !== 'uncategorized';
 
   const score = agent.reputation?.score ?? null;
   const feedbackCount = agent.reputation?.feedbackCount ?? 0;
@@ -217,7 +212,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
           {/* Category as an eyebrow, not a chip: it is orientation, not a signal. */}
           {classified ? (
             <span className="eyebrow shrink-0 text-right text-amber/80">
-              {CATEGORY_LABELS[primary.category]}
+              {categoryLabel}
             </span>
           ) : (
             <Badge

@@ -8,7 +8,7 @@ import { Panel, PanelHeader, SectionRule, type PanelWeight } from '../../compone
 import { AgentProfileSkeleton, ErrorState } from '../../components/ui/states';
 import { WakingNotice } from '../../components/ui/waking-notice';
 import { ApiError, describeError } from '../../lib/api/errors';
-import { CATEGORY_LABELS, describeInterface } from '../../lib/api/contract';
+import { describeInterface, displayCategory } from '../../lib/api/contract';
 import { agentIdentityUrl } from '../../lib/web3/chain';
 import { useAgent, useAgentReputation } from '../discovery/use-agents';
 import { AgentInterface } from './agent-interface';
@@ -74,8 +74,7 @@ export function AgentDetailView({ id }: { id: string }) {
   const agent = agentQuery.data;
   if (!agent) return null;
 
-  const primary = agent.categories.find((entry) => entry.isPrimary) ?? agent.categories[0];
-  const classified = primary !== undefined && primary.category !== 'uncategorized';
+  const { label: categoryLabel } = displayCategory(agent.categories);
   const metadataMissing = agent.profile.metadataResolvedAt === null;
 
   /*
@@ -131,7 +130,7 @@ export function AgentDetailView({ id }: { id: string }) {
             <div className="min-w-0 flex-1">
               {/* Category as an eyebrow above the name, the way a title page is set. */}
               <p className="eyebrow text-amber/80">
-                {classified ? CATEGORY_LABELS[primary.category] : 'Unclassified'}
+                {categoryLabel}
               </p>
 
               {/*
