@@ -188,10 +188,20 @@ function ConnectWallet() {
 
   return (
     <div className="relative" ref={container}>
+      {/*
+       * Titled as optional, because the button alone implies the opposite.
+       *
+       * Styled as the header's primary action, "Connect" reads as step one — and it is not a step at
+       * all. `useAccount` is imported by this file and nowhere else in the app, so the connected
+       * wallet signs nothing and gates nothing; hiring is signed by a passkey and every read comes
+       * from the backend. Unexplained, it sent people hunting for a wallet they did not need. The
+       * hiring panel says the same thing where the decision is actually made.
+       */}
       <Button
         variant="primary"
         size="sm"
         disabled={isPending}
+        title="Optional. Hiring is signed by a passkey in your device, so no wallet connection is required."
         aria-haspopup={only ? undefined : 'menu'}
         aria-expanded={only ? undefined : open}
         onClick={() => {

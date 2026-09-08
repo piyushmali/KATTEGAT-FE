@@ -45,6 +45,19 @@ export function CommissionForm({
   const commission = useCommissionWork(agentId);
   const [task, setTask] = useState('');
   const [budget, setBudget] = useState('0');
+  /*
+   * A funded job cannot be settled from here, and that has to be consented to rather than
+   * discovered afterwards.
+   *
+   * KATTEGAT can create and fund a job. It cannot submit a deliverable, release the escrow or
+   * raise a dispute: the escrow integration is read-only — `getJob`, `status`, `budget` — with no
+   * `submit`, `release`, `dispute` or `refund` in the ABI, the API or this UI. So tokens locked
+   * here stay locked as far as this product is concerned, whatever the kernel itself allows.
+   *
+   * Declared with the other hooks rather than beside the logic that uses it, because the early
+   * returns below would make it conditional.
+   */
+  const [acceptLock, setAcceptLock] = useState(false);
 
   const escrow = context.escrow;
 
@@ -85,15 +98,33 @@ export function CommissionForm({
   };
 
   const budgetValid = /^\d+(\.\d+)?$/.test(budget.trim());
-  const ready = task.trim().length > 0 && budgetValid && !commission.isPending;
+
+  /*
+   * Whether this job would actually move tokens, decided on the raw units rather than the typed
+   * string so "0.0" and "00" are recognised as zero.
+   */
+  const movesTokens = budgetValid && BigInt(toRawUnits(budget)) > 0n;
+
+  /*
+   * Zero-budget jobs need no acknowledgement and remain the honest default: they exercise the
+   * whole rail, are real on chain, and put nothing at stake.
+   */
+  const ready =
+    task.trim().length > 0 && budgetValid && (!movesTokens || acceptLock) && !commission.isPending;
   const result = commission.data?.job;
 
   return (
     <div className="mt-7 border-t border-line pt-5">
       <p className="eyebrow">Commission work</p>
+      {/*
+       * This used to say the payment "is released to {agentName} only after it delivers", which
+       * described the protocol rather than this product. The kernel holds the escrow, but KATTEGAT
+       * has no step that submits a deliverable or releases the funds, so the sentence promised a
+       * settlement nothing here can perform.
+       */}
       <p className="mt-2 text-2xs leading-5 text-ink-muted">
-        Funds an ERC-8183 job on chain. The payment is held by the escrow contract, not by
-        KATTEGAT, and is released to {agentName} only after it delivers.
+        Creates and funds a real ERC-8183 job on chain. The escrow contract holds the payment, never
+        KATTEGAT — and releasing it to {agentName} is not a step this version can perform yet.
       </p>
 
       <label className="mt-4 block">
@@ -123,22 +154,49 @@ export function CommissionForm({
           className="mt-1.5 w-full rounded-control border border-line bg-surface-inset px-3 py-2 font-mono text-xs text-ink focus:border-line-strong focus:outline-none"
         />
         <span className="mt-1 block text-3xs text-ink-faint">
-          {budget.trim() === '0'
+          {!movesTokens
             ? /*
                * Said plainly rather than treated as an error. A zero-budget job is a documented
                * case in the protocol: it moves no tokens and skips the token approval, which makes
                * it the way to exercise the rail without holding any.
                */
-              `Zero moves no tokens and needs no ${escrow.tokenSymbol}. The job is still real on chain.`
-            : `You must hold this much ${escrow.tokenSymbol} for the escrow to fund.`}
+              `Zero moves no tokens and needs no ${escrow.tokenSymbol}. The job is still real on chain. Recommended.`
+            : `You must hold this much ${escrow.tokenSymbol}, and it cannot be recovered through KATTEGAT once locked.`}
         </span>
       </label>
 
+      {/*
+       * The dispute window is a real kernel parameter and worth stating, but it used to be phrased
+       * as "stays yours to dispute until then" — an action this product does not offer. Reported as
+       * the contract's own term instead of as a control the user has here.
+       */}
       <p className="mt-3 rounded-control border border-line bg-surface-inset px-3 py-2.5 text-3xs leading-5 text-ink-muted">
-        Delivered work is held for {Math.max(1, Math.round(escrow.disputeWindowSeconds / 60))}{' '}
-        minutes before the escrow can be released, so a job you fund now stays yours to dispute
-        until then.
+        The kernel holds delivered work for{' '}
+        {Math.max(1, Math.round(escrow.disputeWindowSeconds / 60))} minutes before the escrow may be
+        released. That window is enforced by the contract; raising a dispute inside it is not
+        available here.
       </p>
+
+      {/*
+       * Informed consent at a trust boundary, and the reason it is a checkbox rather than a
+       * sentence: a paid job is the one action on this page that can lose something, and there is
+       * no undo anywhere in the product.
+       */}
+      {movesTokens ? (
+        <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-control border border-caution/30 bg-caution-wash/15 px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={acceptLock}
+            onChange={() => setAcceptLock((value) => !value)}
+            className="mt-0.5 size-3.5 shrink-0 accent-amber"
+          />
+          <span className="text-3xs leading-5 text-caution">
+            I understand this locks {budget.trim()} {escrow.tokenSymbol} in the escrow contract and
+            that KATTEGAT cannot release, refund or dispute it. Use a budget of 0 to exercise the
+            rail without putting tokens at stake.
+          </span>
+        </label>
+      ) : null}
 
       <Button
         variant="primary"

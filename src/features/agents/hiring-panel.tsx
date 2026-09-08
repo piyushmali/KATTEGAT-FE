@@ -216,6 +216,14 @@ export function HiringPanel({
               or Windows Hello. KATTEGAT&rsquo;s servers never hold it and cannot grant or
               revoke on your behalf.
               {context.gasSponsored ? ' We cover the gas for your first grant.' : ''}
+              {/*
+               * Stated here because this is where the question arises. The header's "Connect"
+               * button is styled as the primary action and reads as a prerequisite, so a user
+               * reaching this form reasonably assumes they must connect a wallet first. They must
+               * not: the connected wallet signs nothing anywhere in this app.
+               */}{' '}
+              No wallet connection is needed — the &ldquo;Connect&rdquo; button in the header is
+              optional identity only, and is not part of hiring.
             </p>
 
             {context.isMainnet ? (
@@ -237,6 +245,22 @@ export function HiringPanel({
                 risk, but every transaction below is genuine and verifiable on chain.
               </p>
             )}
+
+            {/*
+             * What a grant is, and what it is not yet.
+             *
+             * The authority created here is real, on chain and independently verifiable in the
+             * public Keystore. What does not happen yet is delivery: nothing hands the session to
+             * the agent and no dispatch reaches its endpoint, so the agent is not notified and
+             * cannot act on it. Saying so is the same standard this panel already holds itself to
+             * elsewhere — an earlier version called a custodial backend a "sandbox", and the fix
+             * was to stop describing the problem and state the truth.
+             */}
+            <p className="mt-2.5 text-2xs leading-5 text-ink-faint">
+              This grants and records the authority, and proves it in the public Keystore. Handing
+              the session to {agentName} so it can act is not wired up yet, so nothing will move
+              on its own.
+            </p>
 
             {/* ------------------------------ the terms ------------------------------ */}
             <div className="mt-6 space-y-5">
@@ -351,9 +375,17 @@ export function HiringPanel({
                 {hire.isPending ? <InlineSpinner label="Waiting for your approval" /> : 'Hire agent'}
               </Button>
 
+              {/*
+               * "A few seconds" was optimistic to the point of looking broken. The grant waits for
+               * the relay to confirm, then for the new session key to be readable on chain, and
+               * BSC's public endpoints serve stale reads for a spell after that — the SDK adds up
+               * to 12s of its own buffer for it. Half a minute is the honest figure, and a first
+               * hire asks for the biometric twice: once to create the passkey, once to sign.
+               */}
               {hire.isPending ? (
                 <p className="text-2xs leading-5 text-ink-faint">
-                  Approve with your device, then this settles in a block. A few seconds.
+                  Approve with your device. The first hire asks twice — once to create your passkey,
+                  once to sign the grant — then it settles on chain in around half a minute.
                 </p>
               ) : null}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { listAgentsResponseSchema, listCategoriesResponseSchema } from '../../lib/api/contract';
 import { mockListAgents, mockListCategories } from '../../lib/api/mock-data';
@@ -661,7 +661,18 @@ describe('CommissionForm', () => {
 
   it('frames the payment as held by the contract rather than by KATTEGAT', () => {
     renderForm();
-    expect(screen.getByText(/held by the escrow contract, not by/i)).toBeInTheDocument();
+    expect(screen.getByText(/escrow contract holds the payment, never KATTEGAT/i)).toBeInTheDocument();
+  });
+
+  it('does not claim a release it cannot perform', () => {
+    /*
+     * It used to say the escrow "is released to {agent} only after it delivers", which described
+     * the protocol and not this product: there is no submit, release, dispute or refund anywhere
+     * in the escrow integration, the API or the UI. Promising settlement that cannot happen is
+     * the one copy error here that could cost someone money.
+     */
+    renderForm();
+    expect(screen.getByText(/not a step this version can perform yet/i)).toBeInTheDocument();
   });
 
   it('refuses to offer a hire when no dispute policy is accepted on this network', () => {
@@ -696,6 +707,55 @@ describe('CommissionForm', () => {
 
   it('states the dispute window, so escrow held after delivery is expected', () => {
     renderForm();
-    expect(screen.getByText(/15 minutes before the escrow can be released/i)).toBeInTheDocument();
+    expect(screen.getByText(/15 minutes before the escrow may be/i)).toBeInTheDocument();
+  });
+
+  /*
+   * The money guard. A funded job cannot be settled from here, so a paid budget has to be
+   * consented to rather than discovered afterwards. These are the cases that would let someone
+   * lock tokens by accident if they regressed.
+   */
+  const fundButton = () => screen.getByRole('button', { name: /fund the job/i });
+  const setBudget = (value: string) =>
+    fireEvent.change(screen.getByLabelText(/budget in/i), { target: { value } });
+  // The button also needs a task, so a budget-only test would be disabled for the wrong reason.
+  const setTask = () =>
+    fireEvent.change(screen.getByLabelText(/the task/i), { target: { value: 'Check the pool.' } });
+
+  it('funds a zero-budget job without asking for any acknowledgement', () => {
+    renderForm();
+    setTask();
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(fundButton()).toBeEnabled();
+  });
+
+  it('blocks a paid job until the irrecoverable lock is acknowledged', () => {
+    renderForm();
+    setTask();
+    setBudget('5');
+
+    expect(screen.getByText(/cannot release, refund or dispute it/i)).toBeInTheDocument();
+    expect(fundButton()).toBeDisabled();
+  });
+
+  it('enables a paid job once acknowledged', () => {
+    renderForm();
+    setTask();
+    setBudget('5');
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(fundButton()).toBeEnabled();
+  });
+
+  it('treats a zero written with decimals as zero, not as a paid job', () => {
+    // "0.00" moves nothing. Deciding on the typed string rather than the raw units would demand
+    // an acknowledgement for a job that puts nothing at stake.
+    renderForm();
+    setTask();
+    setBudget('0.00');
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(fundButton()).toBeEnabled();
   });
 });
