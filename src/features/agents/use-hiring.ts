@@ -6,7 +6,7 @@ import type { EscrowContext, SpendPeriod } from '../../lib/api/contract';
 import {
   commissionWork,
   grantAuthority,
-  loadCredential,
+  loadAuthority,
   openAuthority,
   revokeAuthority,
 } from '../../lib/web3/agent-authority';
@@ -72,8 +72,17 @@ export function useHireAgent(agentId: string) {
       if (input.gasSponsored) {
         try {
           await api.sponsorGas(agentId, authority.walletAddress);
-        } catch {
-          // Sponsorship is a convenience. If it is unavailable the grant may still succeed.
+        } catch (error) {
+          /*
+           * Still tolerated: the user may already hold enough, and `grantAuthority` checks the
+           * balance before it prompts, so an unaffordable grant now fails with the amount it
+           * needed rather than an empty relay revert.
+           *
+           * Logged rather than dropped. Swallowing this silently is what made the failure
+           * undiagnosable: every funding problem arrived as "an error occurred while executing
+           * calls" from the relay, with the actual cause discarded here.
+           */
+          console.error('[kattegat] gas sponsorship failed; continuing to the grant', error);
         }
       }
 
@@ -81,6 +90,7 @@ export function useHireAgent(agentId: string) {
       const granted = await grantAuthority({
         networkName: input.networkName,
         credential: authority.credential,
+        walletAddress: authority.walletAddress,
         spendLimitWei: BigInt(input.spendLimitWei),
         spendPeriod: input.spendPeriod,
         durationMinutes: input.durationMinutes,
@@ -116,15 +126,9 @@ export function useRevokeAgent(agentId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      publicKey,
-      networkName,
-    }: {
-      publicKey: string;
-      networkName: string;
-    }) => {
-      const credential = loadCredential();
-      if (credential === null) {
+    mutationFn: async ({ publicKey, networkName }: { publicKey: string; networkName: string }) => {
+      const stored = loadAuthority();
+      if (stored === null) {
         /*
          * The credential lives in this browser's storage. Without it we cannot sign a
          * revocation, and saying so is better than a cryptic SDK error: the user's authority is
@@ -138,7 +142,8 @@ export function useRevokeAgent(agentId: string) {
       // Chain first. The backend refuses to record a revocation the Keystore has not seen.
       await revokeAuthority({
         networkName,
-        credential,
+        credential: stored.credential,
+        walletAddress: stored.walletAddress,
         publicKey: publicKey as `0x${string}`,
       });
 
@@ -202,14 +207,16 @@ export function useCommissionWork(agentId: string) {
       if (input.gasSponsored) {
         try {
           await api.sponsorGas(agentId, authority.walletAddress);
-        } catch {
-          // A convenience. The hire can still succeed if the wallet is already funded.
+        } catch (error) {
+          // Tolerated for the same reason as a grant, and logged for the same reason.
+          console.error('[kattegat] gas sponsorship failed; continuing to the hire', error);
         }
       }
 
       const job = await commissionWork({
         networkName: input.networkName,
         credential: authority.credential,
+        walletAddress: authority.walletAddress,
         escrow: {
           commerce: input.escrow.commerce,
           router: input.escrow.router,

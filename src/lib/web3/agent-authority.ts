@@ -9,7 +9,7 @@ import {
   type NetworkConfig,
   type PasskeyCredential,
 } from '@altananetwork/sdk';
-import { createPublicClient, http, type Hex } from 'viem';
+import { createPublicClient, formatEther, http, type Hex } from 'viem';
 
 /**
  * The user's own agent authority, held in their device.
@@ -38,6 +38,32 @@ import { createPublicClient, http, type Hex } from 'viem';
 const STORAGE_KEY = 'kattegat.agent-authority.passkey';
 
 /**
+ * The stored authority: a credential AND the wallet address it controls.
+ *
+ * The address has to be persisted rather than recomputed, and that is the whole fix for hires
+ * that failed with the Altana relay's `Reason: 0x`.
+ *
+ * `createWallet({ signer })` looks like it would recover the address, and for a private-key
+ * signer it does. For a passkey it does not: `registerAccount` generates a *fresh throwaway
+ * EOA* per call and returns its address as the wallet address, so two calls with one credential
+ * yield two unrelated wallets. Verified — three calls, three addresses.
+ *
+ * That is why hiring could never work. `openAuthority` created one address and the backend
+ * sponsored it; `grantAuthority` called `createWallet` again and granted on a different,
+ * empty address, so the relay rejected the batch for insufficient value and reported nothing
+ * but `0x`. Raising the sponsorship could not fix it, because the funds were never landing on
+ * the wallet that signed.
+ *
+ * The address written into the passkey's `userHandle` by `createPasskeyWallet` is the real,
+ * stable identity — it is what `recoverFromPasskey` reads back. So it is captured once at
+ * creation and carried from here on.
+ */
+interface StoredAuthority {
+  credential: PasskeyCredential;
+  walletAddress: `0x${string}`;
+}
+
+/**
  * Network is chosen by the backend, never here.
  *
  * The API reports which chain it verifies against, and this maps that to the SDK config, so a
@@ -55,14 +81,31 @@ export function networkFor(name: string): NetworkConfig {
  * stored is the credential *id* and public key, which are useless without the device: an
  * attacker with this value cannot sign anything.
  */
-export function loadCredential(): PasskeyCredential | null {
+export function loadAuthority(): StoredAuthority | null {
   if (typeof window === 'undefined') return null;
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (raw === null) return null;
 
   try {
-    return JSON.parse(raw) as PasskeyCredential;
+    const parsed = JSON.parse(raw) as Partial<StoredAuthority> & { id?: unknown };
+
+    /*
+     * Entries written before the address was stored are unusable, and silently so: they hold a
+     * credential whose wallet address was a per-call random value that was never recorded. The
+     * only honest move is to drop them and let the user create authority that works. Nothing is
+     * lost that was ever usable — a grant from such an entry could not have succeeded.
+     */
+    if (
+      typeof parsed.walletAddress !== 'string' ||
+      !parsed.walletAddress.startsWith('0x') ||
+      parsed.credential === undefined
+    ) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return { credential: parsed.credential, walletAddress: parsed.walletAddress };
   } catch {
     /*
      * Corrupt entry. Cleared rather than thrown, because the recovery is to make a new
@@ -73,8 +116,8 @@ export function loadCredential(): PasskeyCredential | null {
   }
 }
 
-function saveCredential(credential: PasskeyCredential): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(credential));
+function saveAuthority(authority: StoredAuthority): void {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(authority));
 }
 
 export interface AuthorityHandle {
@@ -99,31 +142,160 @@ export interface GrantedSession {
  * keychain, so losing our stored copy is inconvenient rather than fatal.
  */
 export async function openAuthority(networkName: string): Promise<AuthorityHandle> {
+  const stored = loadAuthority();
+
+  /*
+   * Returned as stored, with no call to `createWallet`. The stored address IS the wallet; asking
+   * the SDK to re-derive it from a passkey signer mints a new random one instead (see
+   * StoredAuthority), which is what broke every hire.
+   */
+  if (stored !== null) return stored;
+
   const client = createClient({ chains: [networkFor(networkName)] });
-  const stored = loadCredential();
-
-  if (stored !== null) {
-    const signer = signerFromPasskey(stored);
-    const wallet = await client.createWallet({ signer });
-    return { walletAddress: wallet.address, credential: stored };
-  }
-
   const created = await client.createPasskeyWallet({ name: 'KATTEGAT agent authority' });
-  saveCredential(created.signer.credential);
-  return { walletAddress: created.address, credential: created.signer.credential };
+  const authority = {
+    walletAddress: created.address,
+    credential: created.signer.credential,
+  };
+  saveAuthority(authority);
+  return authority;
 }
 
 /** Reopens a wallet from the OS keychain when this browser has no stored credential. */
 export async function recoverAuthority(networkName: string): Promise<AuthorityHandle> {
   const client = createClient({ chains: [networkFor(networkName)] });
   const recovered = await client.recoverFromPasskey();
-  saveCredential(recovered.signer.credential);
-  return { walletAddress: recovered.address, credential: recovered.signer.credential };
+  const authority = {
+    walletAddress: recovered.address,
+    credential: recovered.signer.credential,
+  };
+  saveAuthority(authority);
+  return authority;
+}
+
+/* --------------------------- affording the batch -------------------------- */
+
+const CONTROLLER_FEE_ABI = [
+  {
+    name: 'getRegistrationFeeInWei',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const;
+
+const KEYSTORE_GET_KEYS_ABI = [
+  {
+    name: 'getKeys',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'bytes32[]' }],
+  },
+] as const;
+
+/**
+ * Execution gas for the grant batch, on top of the KeyStore fees.
+ *
+ * Measured over repeated grants on BSC testnet: total cost landed between 0.00014 and
+ * 0.00146 BNB, and the portion that is not registration fee never exceeded ~0.0003.
+ */
+const GAS_HEADROOM_WEI = 300_000_000_000_000n; // 0.0003 BNB
+
+/**
+ * What the grant batch can cost, given the current fee and the wallet's KeyStore state.
+ *
+ * Separated from the reads so the sizing — the part that can be wrong by a factor of two — is
+ * checkable without a chain. A wallet with no KeyStore entry pays two registration fees, not
+ * one, because `submitCalls` prepends `initialRegisterKey(admin)` to a wallet's first admin
+ * action alongside the `registerKey(session)` that `grantSession` already adds.
+ */
+export function requiredGrantWei(registrationFeeWei: bigint, registeredKeyCount: number): bigint {
+  const registrations = registeredKeyCount === 0 ? 2n : 1n;
+  return registrationFeeWei * registrations + GAS_HEADROOM_WEI;
+}
+
+/**
+ * Refuses a grant the wallet cannot pay for, before the biometric and before the relay.
+ *
+ * WHY THIS EXISTS
+ *
+ * `grantSession` sends a batch whose calls carry the KeyStore registration fee as `value`.
+ * When the wallet cannot cover it the Altana relay rejects the whole batch during simulation
+ * and returns empty revert data, which viem surfaces as:
+ *
+ *     RpcExecutionError: An error occurred while executing calls.
+ *     Reason: 0x
+ *     Details: 0x
+ *
+ * That message names no cause, so a user hitting it has nothing to act on and no reason not to
+ * press the button again. It cost this project two misdiagnoses. Checking the balance here
+ * turns an unreadable relay revert into a sentence with a number in it.
+ *
+ * Deliberately sized for the worst case the batch can charge rather than the typical one: a
+ * wallet with nothing in KeyStore pays two fees, because `submitCalls` prepends
+ * `initialRegisterKey(admin)` to the first admin action alongside `registerKey(session)`.
+ *
+ * ponytail: a fixed gas headroom rather than an eth_estimateGas against the relay's own
+ * pricing, so a wallet holding slightly less than this is told to top up even though it might
+ * have squeezed through. That is the safe direction to be wrong in — the alternative is the
+ * `Reason: 0x` dead end. Upgrade path is asking the relay to price the intent, which needs a
+ * prepared batch and therefore the biometric this check exists to happen before.
+ */
+async function assertCanPayForGrant(
+  config: NetworkConfig,
+  walletAddress: `0x${string}`,
+): Promise<void> {
+  const publicClient = createPublicClient({
+    chain: config.chain,
+    transport: http(config.publicRpcUrl),
+  });
+
+  const [fee, registeredKeys] = await Promise.all([
+    publicClient.readContract({
+      address: config.keyStoreController,
+      abi: CONTROLLER_FEE_ABI,
+      functionName: 'getRegistrationFeeInWei',
+    }),
+    publicClient.readContract({
+      address: config.keyStore,
+      abi: KEYSTORE_GET_KEYS_ABI,
+      functionName: 'getKeys',
+      args: [walletAddress],
+    }),
+  ]);
+
+  const required = requiredGrantWei(fee, registeredKeys.length);
+
+  /*
+   * Polled rather than read once. The backend waits for its funding transfer to confirm, but
+   * BSC's public endpoints serve stale reads for several seconds afterwards — the SDK documents
+   * the same lag around `grantSession`. Failing a wallet that was funded a moment ago would
+   * reintroduce the race this check is meant to close.
+   */
+  let balance = 0n;
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    balance = await publicClient.getBalance({ address: walletAddress });
+    if (balance >= required || Date.now() >= deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+
+  if (balance < required) {
+    const symbol = config.chain.nativeCurrency.symbol;
+    throw new Error(
+      `This wallet needs about ${formatEther(required)} ${symbol} to grant authority and holds ` +
+        `${formatEther(balance)}. Add ${symbol} to ${walletAddress} and try again.`,
+    );
+  }
 }
 
 export interface GrantInput {
   networkName: string;
   credential: PasskeyCredential;
+  /** The wallet this credential controls. Carried, never re-derived. See StoredAuthority. */
+  walletAddress: `0x${string}`;
   /** Ceiling in wei. Enforced by the account contract, not by us. */
   spendLimitWei: bigint;
   spendPeriod: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
@@ -151,7 +323,9 @@ export async function grantAuthority(input: GrantInput): Promise<GrantedSession>
   const config = networkFor(input.networkName);
   const client = createClient({ chains: [config] });
   const signer = signerFromPasskey(input.credential);
-  const wallet = await client.createWallet({ signer });
+  const wallet = { address: input.walletAddress };
+
+  await assertCanPayForGrant(config, wallet.address);
 
   const expiryUnix = Math.floor(Date.now() / 1000) + input.durationMinutes * 60;
 
@@ -184,11 +358,13 @@ export async function grantAuthority(input: GrantInput): Promise<GrantedSession>
 export async function revokeAuthority(input: {
   networkName: string;
   credential: PasskeyCredential;
+  /** Carried, never re-derived: a re-derived address revokes on a wallet that holds nothing. */
+  walletAddress: `0x${string}`;
   publicKey: Hex;
 }): Promise<{ transactionHash: Hex | null }> {
   const client = createClient({ chains: [networkFor(input.networkName)] });
   const signer = signerFromPasskey(input.credential);
-  const wallet = await client.createWallet({ signer });
+  const wallet = { address: input.walletAddress };
 
   const result = await client.revokeSession({
     wallet,
@@ -234,6 +410,8 @@ export interface EscrowTargets {
 export interface CommissionInput {
   networkName: string;
   credential: PasskeyCredential;
+  /** Carried, never re-derived. See StoredAuthority. */
+  walletAddress: `0x${string}`;
   escrow: EscrowTargets;
   /** The agent's own wallet address, which is how the kernel names it as provider. */
   provider: `0x${string}`;
@@ -277,7 +455,9 @@ export async function commissionWork(input: CommissionInput): Promise<Commission
   const config = networkFor(input.networkName);
   const client = createClient({ chains: [config] });
   const signer = signerFromPasskey(input.credential);
-  const wallet = await client.createWallet({ signer });
+  const wallet = { address: input.walletAddress };
+
+  await assertCanPayForGrant(config, wallet.address);
 
   const expiryUnix = Math.floor(Date.now() / 1000) + input.durationMinutes * 60;
 
@@ -300,7 +480,10 @@ export async function commissionWork(input: CommissionInput): Promise<Commission
     register: true,
   });
 
-  const publicClient = createPublicClient({ chain: config.chain, transport: http(config.publicRpcUrl) });
+  const publicClient = createPublicClient({
+    chain: config.chain,
+    transport: http(config.publicRpcUrl),
+  });
 
   /*
    * The job id has to be predicted, because every call after `createJob` names it and they are all
@@ -313,7 +496,13 @@ export async function commissionWork(input: CommissionInput): Promise<Commission
   const counter = await publicClient.readContract({
     address: input.escrow.commerce,
     abi: [
-      { name: 'jobCounter', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+      {
+        name: 'jobCounter',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [{ type: 'uint256' }],
+      },
     ] as const,
     functionName: 'jobCounter',
   });
@@ -324,7 +513,9 @@ export async function commissionWork(input: CommissionInput): Promise<Commission
    * Must clear the dispute window, or the provider could never submit in time and the job would
    * only ever expire. The extra half hour is slack for the batch to land.
    */
-  const expiredAt = BigInt(Math.floor(Date.now() / 1000) + input.escrow.disputeWindowSeconds + 1800);
+  const expiredAt = BigInt(
+    Math.floor(Date.now() / 1000) + input.escrow.disputeWindowSeconds + 1800,
+  );
 
   const calls = buildHireCalls({
     addresses: {
@@ -361,7 +552,10 @@ export async function paymentTokenBalance(
   holder: `0x${string}`,
 ): Promise<bigint> {
   const config = networkFor(networkName);
-  const publicClient = createPublicClient({ chain: config.chain, transport: http(config.publicRpcUrl) });
+  const publicClient = createPublicClient({
+    chain: config.chain,
+    transport: http(config.publicRpcUrl),
+  });
 
   return publicClient.readContract({
     address: token,

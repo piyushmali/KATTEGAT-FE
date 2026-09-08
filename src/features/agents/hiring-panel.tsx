@@ -8,7 +8,7 @@ import { Panel, PanelHeader, type PanelWeight } from '../../components/ui/card';
 import { InlineSpinner, Skeleton } from '../../components/ui/states';
 import { describeWeb3Error } from '../../lib/api/errors';
 import { formatDate } from '../../lib/utils/format';
-import { truncateAddress } from '../../lib/web3/chain';
+import { sessionTargetsFor, truncateAddress } from '../../lib/web3/chain';
 import type { AgentSession, SpendPeriod } from '../../lib/api/contract';
 import { supportsPasskeys } from '../../lib/web3/agent-authority';
 import { CommissionForm } from './commission-form';
@@ -60,26 +60,6 @@ const PRESET_DURATIONS = [
   { label: '7 days', minutes: 10_080 },
 ] as const;
 
-/**
- * Contracts an agent can be scoped to, by name.
- *
- * A hex address is not a decision anyone can make, so the choice is offered as the venue it
- * belongs to. These are the BNB Chain routers and markets the launch categories actually
- * touch, which is also what Altana ships skills for.
- */
-const PRESET_TARGETS = [
-  {
-    label: 'PancakeSwap router',
-    address: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
-    note: 'Swaps and liquidity. What a grid or rebalancing agent needs.',
-  },
-  {
-    label: 'Venus comptroller',
-    address: '0xfD36E2c2a6789Db23113685031d7F16329158384',
-    note: 'Lending positions. What a health-factor monitor needs.',
-  },
-] as const;
-
 const SPEND_PERIOD: SpendPeriod = 'day';
 
 export function HiringPanel({
@@ -106,7 +86,13 @@ export function HiringPanel({
 
   const [capWei, setCapWei] = useState<string>(PRESET_CAPS[1].wei);
   const [durationMinutes, setDurationMinutes] = useState<number>(PRESET_DURATIONS[0].minutes);
-  const [targets, setTargets] = useState<string[]>([PRESET_TARGETS[0].address]);
+  /*
+   * Null until the user picks, rather than seeded with an address. Which contracts exist
+   * depends on the network, and the network arrives with the sessions query — so a seeded
+   * default would have to be a hex literal chosen before we know which chain we are on, which
+   * is the bug this replaces. Null means "the network's first target", resolved below.
+   */
+  const [selectedTargets, setSelectedTargets] = useState<string[] | null>(null);
 
   const data = sessionsQuery.data;
   const context = data?.context;
@@ -114,11 +100,24 @@ export function HiringPanel({
   const live = sessions.filter((session) => session.status === 'active');
   const past = sessions.filter((session) => session.status !== 'active');
 
+  const presetTargets = sessionTargetsFor(context?.network ?? '');
+
+  /*
+   * Filtered against the current network's targets, so a selection cannot survive into a grant
+   * on a chain where that address is not what the label says. The network is backend
+   * configuration and does not change under a live page, but the failure mode if it ever did
+   * is a session authorising the wrong contract, which is the one outcome worth this line.
+   */
+  const offered = new Set<string>(presetTargets.map((preset) => preset.address));
+  const targets = (
+    selectedTargets ?? presetTargets.slice(0, 1).map((preset) => preset.address)
+  ).filter((address) => offered.has(address));
+
   const toggleTarget = (address: string): void => {
-    setTargets((current) =>
-      current.includes(address)
-        ? current.filter((entry) => entry !== address)
-        : [...current, address],
+    setSelectedTargets(
+      targets.includes(address)
+        ? targets.filter((entry) => entry !== address)
+        : [...targets, address],
     );
   };
 
@@ -127,8 +126,13 @@ export function HiringPanel({
       <PanelHeader
         title="Hiring"
         action={
+          /*
+           * From the API, not a literal. This read "BNB testnet" unconditionally, so a mainnet
+           * deployment would have labelled real funds as a test network — against this file's
+           * own rule that nothing here hardcodes a chain.
+           */
           context?.enabled ? (
-            <Badge tone="positive">BNB testnet</Badge>
+            <Badge tone={context.isMainnet ? 'caution' : 'positive'}>{context.network}</Badge>
           ) : (
             <Badge tone="outline">Unavailable</Badge>
           )
@@ -289,7 +293,7 @@ export function HiringPanel({
                   Permitted contracts
                 </legend>
                 <div className="mt-2.5 space-y-2">
-                  {PRESET_TARGETS.map((preset) => (
+                  {presetTargets.map((preset) => (
                     <label
                       key={preset.address}
                       className="flex cursor-pointer items-start gap-2.5"
