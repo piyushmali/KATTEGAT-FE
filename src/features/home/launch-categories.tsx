@@ -37,7 +37,14 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
 };
 
 export function LaunchCategories() {
-  const { data, isLoading, isError } = useCategories();
+  /*
+   * Scoped to match the page each tile links to.
+   *
+   * These tiles navigate to `/categories/<id>`, which lists resolved agents that declared an
+   * endpoint, so counting anything wider puts a number on the tile that the destination
+   * contradicts. Unscoped, the Rebalancing tile read 130 and the page it opened held 147.
+   */
+  const { data, isLoading, isError } = useCategories({ resolvedOnly: true, hasEndpoint: true });
 
   // Degrades to nothing rather than a broken frame on the first screen a visitor sees.
   if (isError) return null;

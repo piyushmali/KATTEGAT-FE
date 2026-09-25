@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api/client';
+import { categoryCountScope } from '../../lib/api/contract';
 import type { ListAgentsParams } from '../../lib/api/contract';
 import { PER_PAGE } from './use-discovery-params';
 
@@ -106,10 +107,24 @@ export function useSearch(query: string, page: number, enabled: boolean) {
   });
 }
 
-export function useCategories() {
+/**
+ * The taxonomy with counts, scoped to the filters the caller is showing.
+ *
+ * `params` is optional because two callers want different things from this. The discovery grid
+ * passes its filters, so each tab count equals what clicking that tab returns — the whole point,
+ * since unscoped counts described the index while the grid showed a subset, putting "Trading &
+ * Execution 135,424" above a total of 6,191. The landing page passes nothing and gets counts over
+ * the whole index, which is what it is talking about.
+ *
+ * The scope is part of the query key, or the two callers would share one cache entry and
+ * whichever rendered second would show the other's numbers.
+ */
+export function useCategories(params: ListAgentsParams = {}) {
+  const scope = categoryCountScope(params);
+
   return useQuery({
-    queryKey: agentKeys.categories(),
-    queryFn: ({ signal }) => api.listCategories(signal),
+    queryKey: [...agentKeys.categories(), scope] as const,
+    queryFn: ({ signal }) => api.listCategories(scope, signal),
     // The taxonomy is static; only the counts move.
     staleTime: 5 * 60_000,
   });

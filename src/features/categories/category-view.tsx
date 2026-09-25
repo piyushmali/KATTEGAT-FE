@@ -31,7 +31,12 @@ import { guidanceFor } from './category-guidance';
  * unrated ones below without hiding them.
  */
 export function CategoryView({ id }: { id: AgentCategoryId }) {
-  const categoriesQuery = useCategories();
+  /*
+   * Scoped to the same two filters this page's own list uses, or the count in the header
+   * describes a different set of agents from the grid beneath it. Passing the category itself
+   * would be wrong: the endpoint counts every category and ignores `category` for that reason.
+   */
+  const categoriesQuery = useCategories({ resolvedOnly: true, hasEndpoint: true });
   const agentsQuery = useAgents({
     category: id,
     perPage: 24,

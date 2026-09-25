@@ -4,6 +4,7 @@ import { ApiError, apiErrorFromResponse } from './errors';
 import {
   agentDetailResponseSchema,
   agentSessionSchema,
+  categoryCountScope,
   ecosystemStatsResponseSchema,
   listAgentJobsResponseSchema,
   listAgentsResponseSchema,
@@ -249,11 +250,29 @@ export const api = {
     return result.data;
   },
 
-  async listCategories(signal?: AbortSignal): Promise<ListCategoriesResponse> {
+  /**
+   * Category counts, optionally scoped to the filters the grid has in force.
+   *
+   * Takes filters because these counts label the grid: unscoped, the tabs described the whole
+   * index while the page showed a filtered subset, so "Trading & Execution 135,424" sat above a
+   * total of 6,191 and one tab appeared to hold more agents than the page.
+   *
+   * `category`, `classifiedOnly` and `minConfidence` are dropped rather than forwarded. Clicking
+   * a tab is what sets them, so counting with them applied would report a number the click then
+   * contradicts — and with `classifiedOnly` on, the Uncategorized tab would count zero.
+   */
+  async listCategories(
+    params: ListAgentsParams = {},
+    signal?: AbortSignal,
+  ): Promise<ListCategoriesResponse> {
     if (env.dataSource === 'mock') {
-      return listCategoriesResponseSchema.parse(mockListCategories());
+      return listCategoriesResponseSchema.parse(mockListCategories(params));
     }
-    return request('/api/v1/categories', listCategoriesResponseSchema, signal);
+    return request(
+      `/api/v1/categories${buildQuery(categoryCountScope(params))}`,
+      listCategoriesResponseSchema,
+      signal,
+    );
   },
 
   /**

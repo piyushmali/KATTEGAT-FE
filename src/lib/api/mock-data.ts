@@ -1,3 +1,4 @@
+import { categoryCountScope } from './contract';
 import type { AgentCategoryId, ListAgentsParams } from './contract';
 
 /**
@@ -602,16 +603,38 @@ export function mockAgentDetail(id: string) {
   return agent ? { data: agent } : null;
 }
 
-export function mockListCategories() {
+/**
+ * Category counts, mirroring the API's semantics rather than an easier approximation.
+ *
+ * Three things here were wrong in the same way the real endpoint was, which is exactly what a
+ * fixture must not be: it made the broken behaviour look correct locally.
+ *
+ * - Counts every assignment, not just the primary one, because that is what filtering by a
+ *   category matches. Counting primaries made the tab and the page it labels disagree.
+ * - `uncategorized` is the absence of a real category, not the presence of a marker row.
+ * - Honours the caller's filters, so a scoped count and its grid describe the same agents.
+ */
+export function mockListCategories(params: ListAgentsParams = {}) {
+  // `categoryCountScope` drops `category` and `classifiedOnly` by construction, which is what
+  // lets counting span every category instead of being narrowed to the caller's own.
+  const rows = mockListAgents({
+    ...categoryCountScope(params),
+    page: 1,
+    perPage: MOCK_AGENTS.length,
+  }).data;
+
   const counts = new Map<string, number>();
-  for (const agent of MOCK_AGENTS) {
-    const primary = agent.categories.find((c) => c.is_primary);
-    if (primary) counts.set(primary.category, (counts.get(primary.category) ?? 0) + 1);
+  let uncategorized = 0;
+  for (const agent of rows) {
+    const real = agent.categories.filter((c) => c.category !== 'uncategorized');
+    if (real.length === 0) uncategorized += 1;
+    for (const assignment of real) {
+      counts.set(assignment.category, (counts.get(assignment.category) ?? 0) + 1);
+    }
   }
 
   const data = CATEGORY_META.map((meta) => ({ ...meta, agent_count: counts.get(meta.id) ?? 0 }));
 
-  const uncategorized = counts.get('uncategorized') ?? 0;
   if (uncategorized > 0) {
     data.push({
       id: 'uncategorized',

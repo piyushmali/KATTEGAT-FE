@@ -654,6 +654,31 @@ export type Category = z.output<typeof categorySchema>;
 export type ListAgentsResponse = z.output<typeof listAgentsResponseSchema>;
 export type ListCategoriesResponse = z.output<typeof listCategoriesResponseSchema>;
 
+/**
+ * The subset of a grid's filters that a category count is scoped by.
+ *
+ * One definition because three callers need it — the API client, the query hook and the mock —
+ * and because *which* filters scope a count is the rule that was broken. Counts have to predict
+ * what clicking a category returns, so everything that narrows the page is included and the
+ * three things a click itself sets are not: `category`, `classifiedOnly` and `minConfidence`.
+ * Counting with those applied reports a number the click then contradicts, and with
+ * `classifiedOnly` on the Uncategorized tab would count zero while holding the largest bucket.
+ *
+ * Paging and sort are absent because a set of counts has no pages and no order.
+ *
+ * Keys are spread conditionally rather than assigned `undefined`, which `exactOptionalPropertyTypes`
+ * rejects and which would also put empty parameters on the wire.
+ */
+export function categoryCountScope(params: ListAgentsParams): ListAgentsParams {
+  return {
+    ...(params.q === undefined ? {} : { q: params.q }),
+    ...(params.protocol === undefined ? {} : { protocol: params.protocol }),
+    ...(params.trait === undefined ? {} : { trait: params.trait }),
+    ...(params.resolvedOnly === undefined ? {} : { resolvedOnly: params.resolvedOnly }),
+    ...(params.hasEndpoint === undefined ? {} : { hasEndpoint: params.hasEndpoint }),
+  };
+}
+
 /** Query parameters accepted by `GET /api/v1/agents`. */
 export interface ListAgentsParams {
   category?: AgentCategoryId;

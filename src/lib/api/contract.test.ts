@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   agentSchema,
   AGENT_CATEGORIES,
+  categoryCountScope,
   displayCategory,
   listAgentsResponseSchema,
   listCategoriesResponseSchema,
@@ -310,6 +311,90 @@ describe('displayCategory', () => {
   it('never returns an empty label for any category in the taxonomy', () => {
     for (const category of AGENT_CATEGORIES) {
       expect(displayCategory([assignment(category, true)]).label).not.toBe('');
+    }
+  });
+});
+
+describe('categoryCountScope', () => {
+  /*
+   * The rule this encodes is the one that broke the discovery tabs: a category count has to
+   * predict what clicking that category returns. So everything narrowing the page travels with
+   * the count, and the three things a click itself sets do not.
+   *
+   * Pinned because the failure is silent and only visible in combination — each number looks
+   * plausible alone. Unscoped, the Trading & Execution tab read 135,424 above a total of 6,191,
+   * and Model Evaluation claimed more agents than the whole page held.
+   */
+  it('keeps the filters that narrow the page', () => {
+    expect(
+      categoryCountScope({
+        q: 'vault',
+        protocol: 'a2a',
+        trait: ['x402-paid'],
+        resolvedOnly: true,
+        hasEndpoint: true,
+      }),
+    ).toStrictEqual({
+      q: 'vault',
+      protocol: 'a2a',
+      trait: ['x402-paid'],
+      resolvedOnly: true,
+      hasEndpoint: true,
+    });
+  });
+
+  it('drops what clicking a category would itself set', () => {
+    /*
+     * `classifiedOnly` is the important one. Left in, the Uncategorized tab counts zero — it
+     * asks for agents that both have and do not have a category — so the largest bucket in the
+     * catalogue reads as empty.
+     */
+    expect(
+      categoryCountScope({
+        category: 'rebalancing',
+        classifiedOnly: true,
+        minConfidence: 0.5,
+        resolvedOnly: true,
+      }),
+    ).toStrictEqual({ resolvedOnly: true });
+  });
+
+  it('drops paging and sort, which a set of counts has no use for', () => {
+    expect(
+      categoryCountScope({ page: 3, perPage: 24, sort: 'feedback', direction: 'desc' }),
+    ).toStrictEqual({});
+  });
+
+  it('omits absent keys rather than sending them as undefined', () => {
+    // Assigning `undefined` would both fail `exactOptionalPropertyTypes` and put empty
+    // parameters on the wire.
+    expect(Object.keys(categoryCountScope({}))).toStrictEqual([]);
+  });
+});
+
+describe('mock category counts', () => {
+  /*
+   * The same invariant the API suite asserts, held by the fixtures: a count must equal what
+   * filtering by that category returns. The mock previously counted primary assignments only,
+   * which made the broken behaviour look correct in mock mode — the one thing a fixture must
+   * never do.
+   */
+  it('agrees with the number of agents the category filter returns', () => {
+    const scope = { resolvedOnly: true } as const;
+    const counted = mockListCategories(scope).data.filter((entry) => entry.agent_count > 0);
+
+    expect(counted.length).toBeGreaterThan(0);
+
+    for (const entry of counted) {
+      const listed = mockListAgents({
+        ...scope,
+        category: entry.id as (typeof AGENT_CATEGORIES)[number],
+        perPage: 100,
+      });
+      expect({ id: entry.id, n: listed.meta.total }).toStrictEqual({
+        id: entry.id,
+        n: entry.agent_count,
+      });
     }
   });
 });

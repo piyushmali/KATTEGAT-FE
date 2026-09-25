@@ -30,7 +30,14 @@ import { useDiscoveryParams } from './use-discovery-params';
  */
 export function DiscoveryView() {
   const { state, update, clear, toggleTrait, hasFilters, queryParams } = useDiscoveryParams();
-  const categoriesQuery = useCategories();
+  /*
+   * The grid's own filters, so every tab count equals what clicking that tab returns.
+   *
+   * Unscoped, these counts described the whole index while the grid showed a filtered subset:
+   * the Trading & Execution tab read 135,424 above a total of 6,191, Model Evaluation claimed
+   * more agents than the entire page, and clicking Rebalancing gave 147 where the tab said 130.
+   */
+  const categoriesQuery = useCategories(queryParams);
   const agentsQuery = useAgents(queryParams);
 
   /*
