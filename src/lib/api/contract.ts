@@ -160,6 +160,13 @@ export const agentIdentitySchema = z
     agent_uri: z.string().nullable(),
     registered_at_block: z.number().nullable(),
     registered_at: z.string().nullable(),
+    /*
+     * Optional as well as nullable, so this build still parses a response from an API that
+     * predates the field. The two repos deploy independently and the frontend is usually
+     * first; without the default, a stale backend would fail validation for every agent and
+     * take the whole catalogue down to add one row of provenance.
+     */
+    registration_tx_hash: z.string().nullable().optional(),
   })
   .transform((raw) => ({
     id: raw.id,
@@ -170,6 +177,7 @@ export const agentIdentitySchema = z
     agentUri: raw.agent_uri,
     registeredAtBlock: raw.registered_at_block,
     registeredAt: raw.registered_at,
+    registrationTxHash: raw.registration_tx_hash ?? null,
   }));
 
 export const ENDPOINT_KINDS = ['a2a', 'mcp', 'web', 'wallet', 'social', 'other'] as const;

@@ -35,6 +35,24 @@ export function OnChainIdentity({
 
   const registered = formatDate(identity.registeredAt);
 
+  /*
+   * Shared by both branches of the Registered row. Extracted rather than repeated because the
+   * block is now known for far more agents than the date is — the log sweep records it, the
+   * timestamp would cost an extra call per agent — so "no date" and "no block" stopped being
+   * the same condition, and the block has to appear in the no-date branch too.
+   */
+  const block =
+    identity.registeredAtBlock === null ? null : (
+      <a
+        href={explorerUrl.block(identity.registeredAtBlock)}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="ml-1.5 font-mono text-3xs text-ink-faint transition-colors hover:text-amber"
+      >
+        block {formatCount(identity.registeredAtBlock)}
+      </a>
+    );
+
   return (
     <Panel weight={weight}>
       <PanelHeader
@@ -87,27 +105,58 @@ export function OnChainIdentity({
           {registered ? (
             <span className="text-ink-secondary">
               {registered}
-              {identity.registeredAtBlock ? (
-                <span className="ml-1.5 font-mono text-3xs text-ink-faint">
-                  block {formatCount(identity.registeredAtBlock)}
-                </span>
-              ) : null}
+              {block}
             </span>
           ) : (
             /*
-             * A real gap, and the common case: 317,010 of 317,476 agents have no block
-             * timestamp, because the ID-walk backfill does not read the `Registered` event
-             * and free RPC tiers will not serve enough log history to fill it in.
+             * The date is still a real gap for most of the catalogue. Filling it needs a
+             * timestamp per registration block, which is one RPC call per agent — a cost the
+             * block number and the transaction hash do not carry, since both arrive with the
+             * log itself.
              *
-             * Says what is still known rather than stopping at "Not recorded". Ids are
-             * minted sequentially, so the id alone places the agent in registration order,
-             * which is what the marketplace sorts by.
+             * So this says what is known instead of stopping at "Not recorded". The block is
+             * shown whenever the sweep has found it, and the explorer resolves it to a
+             * timestamp in one click. Ids are minted sequentially, so the id alone already
+             * places the agent in registration order, which is what the marketplace sorts by.
              */
             <span className="text-ink-faint">
               Date not indexed
-              <span className="ml-1.5 text-3xs">
-                registration #{formatCount(identity.agentId)} in sequence
-              </span>
+              {identity.registeredAtBlock === null ? (
+                <span className="ml-1.5 text-3xs">
+                  registration #{formatCount(identity.agentId)} in sequence
+                </span>
+              ) : (
+                block
+              )}
+            </span>
+          )}
+        </DataRow>
+
+        <DataRow bare={quiet} label="Registration tx">
+          {identity.registrationTxHash ? (
+            <span className="inline-flex items-center gap-1.5">
+              <a
+                href={explorerUrl.tx(identity.registrationTxHash)}
+                target="_blank"
+                rel="noreferrer noopener"
+                title={identity.registrationTxHash}
+                className="font-mono text-ink-secondary transition-colors hover:text-amber"
+              >
+                {truncateAddress(identity.registrationTxHash, 8)}
+              </a>
+              <CopyButton value={identity.registrationTxHash} label="registration transaction" />
+            </span>
+          ) : (
+            /*
+             * Absence means "not harvested yet", never "not registered". The hash comes from
+             * a sweep over the registry's `Registered` logs that runs separately from
+             * ingestion, so a newly indexed agent is real and complete in every other respect
+             * while this is still pending. Saying so is the difference between a gap a visitor
+             * can reason about and one that reads as a broken listing.
+             */
+            <span className="text-ink-faint">
+              Not indexed yet
+              <span className="ml-1.5 text-3xs">verify via the registry link above</span>
             </span>
           )}
         </DataRow>

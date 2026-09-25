@@ -26,6 +26,13 @@ type WireAgent = {
     agent_uri: string | null;
     registered_at_block: number | null;
     registered_at: string | null;
+    /*
+     * Required here even though the wire schema treats it as optional. The schema is lenient
+     * so a frontend deploy cannot be broken by an older backend; these fixtures have no such
+     * excuse, and making it required means a new mock agent cannot quietly omit the field and
+     * leave mock mode showing a state the real API never returns.
+     */
+    registration_tx_hash: string | null;
   };
   profile: {
     name: string;
@@ -120,6 +127,7 @@ const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
       agent_uri: 'ipfs://example-rebalancer',
       registered_at_block: 118_000_001,
       registered_at: '2026-06-01T09:15:00.000Z',
+      registration_tx_hash: '0x1a2b3c4d1a2b3c4d1a2b3c4d1a2b3c4d1a2b3c4d1a2b3c4d1a2b3c4d1a2b3c4d',
     },
     profile: {
       name: 'Meridian Rebalancer',
@@ -180,6 +188,7 @@ const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
       agent_uri: 'ipfs://example-grid',
       registered_at_block: 118_000_120,
       registered_at: '2026-06-04T14:02:00.000Z',
+      registration_tx_hash: '0x2b3c4d5e2b3c4d5e2b3c4d5e2b3c4d5e2b3c4d5e2b3c4d5e2b3c4d5e2b3c4d5e',
     },
     profile: {
       name: 'Tidewater Grid',
@@ -248,6 +257,7 @@ const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
       agent_uri: 'ipfs://example-yield',
       registered_at_block: 118_000_400,
       registered_at: '2026-06-11T08:44:00.000Z',
+      registration_tx_hash: '0x3c4d5e6f3c4d5e6f3c4d5e6f3c4d5e6f3c4d5e6f3c4d5e6f3c4d5e6f3c4d5e6f',
     },
     profile: {
       name: 'Kelp Yield Router',
@@ -313,6 +323,7 @@ const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
       agent_uri: 'ipfs://example-health',
       registered_at_block: 118_001_010,
       registered_at: '2026-07-02T19:30:00.000Z',
+      registration_tx_hash: '0x4d5e6f704d5e6f704d5e6f704d5e6f704d5e6f704d5e6f704d5e6f704d5e6f70',
     },
     profile: {
       name: 'Ballast Health Monitor',
@@ -365,6 +376,7 @@ const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
       agent_uri: 'ipfs://example-multi',
       registered_at_block: 118_001_500,
       registered_at: '2026-07-19T11:11:00.000Z',
+      registration_tx_hash: '0x5e6f70815e6f70815e6f70815e6f70815e6f70815e6f70815e6f70815e6f7081',
     },
     profile: {
       name: 'Fjord Treasury Manager',
@@ -432,6 +444,7 @@ const AGENTS_WITHOUT_JOBS: Omit<WireAgent, 'jobs'>[] = [
       agent_uri: 'ipfs://example-unresolved',
       registered_at_block: 118_002_200,
       registered_at: '2026-08-20T06:05:00.000Z',
+      registration_tx_hash: null,
     },
     // Metadata never resolved: identity is on-chain and real, the off-chain
     // document is not readable. The UI must show it as partial, not hide it.

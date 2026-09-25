@@ -130,6 +130,14 @@ export const explorerUrl = {
   token: (contract: string, tokenId: number | string): string =>
     `${EXPLORER_BASE}/token/${contract}?a=${String(tokenId)}`,
   block: (block: number): string => `${EXPLORER_BASE}/block/${String(block)}`,
+  /**
+   * Registry chain only, which is why this is not shared with the hiring panel.
+   *
+   * Sessions are granted on whichever network `NEXT_PUBLIC_HIRING_NETWORK` selects —
+   * testnet by default — while the agent registry is always mainnet. One `tx` helper used
+   * for both would send half the links to an explorer that has never seen the hash.
+   */
+  tx: (hash: string): string => `${EXPLORER_BASE}/tx/${hash}`,
 };
 
 /** Canonical explorer link for an agent's ERC-721 identity token. */
