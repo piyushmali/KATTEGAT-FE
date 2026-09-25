@@ -162,6 +162,39 @@ export function SiteFooter() {
           KATTEGAT reports only what it can evidence. Where the data does not exist, whether that is
           reputation, activity or performance, it is shown as absent rather than as zero.
         </p>
+
+        {/*
+         * Contact and attribution, in the bottom band rather than as a fourth column.
+         *
+         * The grid above is `sm:grid-cols-3` with three items, so a fourth would sit alone on a
+         * second row at that breakpoint. This also puts a reachable address where a footer
+         * conventionally has one: a marketplace that asks people to grant spending authority and
+         * offers no way to reach a human is making an unreasonable request.
+         */}
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 pb-1 text-3xs text-ink-faint">
+          <a
+            href="https://x.com/MaatX_xyz"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="link-rule transition-colors hover:text-ink"
+          >
+            @MaatX_xyz
+          </a>
+          <a href="mailto:kattegatmp@gmail.com" className="link-rule transition-colors hover:text-ink">
+            kattegatmp@gmail.com
+          </a>
+          <span>
+            Built by{' '}
+            <a
+              href="https://maatx.xyz"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="link-rule transition-colors hover:text-ink"
+            >
+              MaatX
+            </a>
+          </span>
+        </div>
       </div>
     </footer>
   );

@@ -59,16 +59,6 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   applicationName: 'KATTEGAT',
   alternates: { canonical: '/' },
-  /*
-   * The link is about to be promoted across channels that render previews, and the document
-   * carried no Open Graph or Twitter tags at all — so every share was a naked URL with no
-   * title, no description and nothing to distinguish it from a phishing link.
-   *
-   * A text card rather than an image one. `summary` is deliberate: X and Telegram fall back to
-   * a bare link when `summary_large_image` is declared and the image 404s, so claiming an
-   * image the site does not have would be worse than claiming none. Swap to
-   * `summary_large_image` and add `src/app/opengraph-image.tsx` when there is artwork.
-   */
   openGraph: {
     type: 'website',
     siteName: 'KATTEGAT',
@@ -77,10 +67,29 @@ export const metadata: Metadata = {
     url: '/',
     locale: 'en',
   },
+  /*
+   * `summary_large_image` now that there is artwork to back it.
+   *
+   * It was `summary` on purpose while there was none: X and Telegram fall back to a bare link
+   * when a large card is declared and the image 404s, so claiming an image the site did not
+   * have would have been worse than claiming none.
+   *
+   * Next resolves both cards from the file convention — `src/app/opengraph-image.jpg` and
+   * `twitter-image.jpg` — so there is no URL to keep in sync here, and no way for the declared
+   * card to drift from the file that serves it.
+   *
+   * JPEG rather than PNG, and the 8x is deliberate: the artwork is smooth dark gradient, which
+   * PNG stores at 689 KB and JPEG at 80 KB with no banding at card size. A social card is
+   * fetched by a crawler on a short timeout, so its weight decides whether the preview appears
+   * at all.
+   */
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: TITLE,
     description: DESCRIPTION,
+    // The account that publishes KATTEGAT, so a shared link carries attribution.
+    site: '@MaatX_xyz',
+    creator: '@MaatX_xyz',
   },
 };
 
