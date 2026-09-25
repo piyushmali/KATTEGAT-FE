@@ -81,32 +81,52 @@ export function SiteHeader() {
 }
 
 /**
- * The KATTEGAT mark: a 3x3 lattice with the centre lit.
+ * The KATTEGAT mark: a harbour beacon inside a compass rose.
  *
- * Reads as a node in a network — an agent among agents — which is the product in one
- * glyph. Drawn in CSS rather than shipped as an asset so it scales and needs no network
- * request. The lit centre warms on hover, which is the only thing the mark does; a
- * logo that animates on a marketplace is a distraction from the catalogue.
+ * Replaces a 3x3 lattice that read as a network node. The lattice was a reasonable glyph for
+ * "an agent among agents", but it was not the identity: the brand kit is a lighthouse, and that
+ * is the mark going onto BNB Chain's launch material. A visitor arriving from a post carrying
+ * the lighthouse and finding a lattice in the header has been given two logos for one product.
+ *
+ * Deliberately the same geometry as `src/app/icon.svg`. They are two copies rather than one
+ * source because Next resolves the favicon from a file at a fixed path and cannot read a React
+ * component — so if either changes, change both. The shapes are kept simple enough to survive
+ * 16px in a browser tab, which also makes them safe at the 24px this renders at.
+ *
+ * `currentColor` throughout, so the hover warming survives in one place: the group sets the
+ * text colour and every shape follows. A logo that animates on a marketplace is a distraction
+ * from the catalogue, so warming is all it does.
  */
 function KattegatMark() {
   return (
-    <span
-      className="grid size-6 shrink-0 grid-cols-3 gap-[2px] rounded-sm border border-line-strong/70 bg-surface-inset p-[3px]"
+    <svg
+      viewBox="0 0 64 64"
+      className="size-6 shrink-0 text-amber-dim transition-colors duration-500 ease-fjord group-hover:text-amber"
+      fill="none"
       aria-hidden="true"
     >
-      {Array.from({ length: 9 }, (_, index) => (
-        <span
-          key={index}
-          className={cn(
-            'rounded-[1px] transition-colors duration-500 ease-fjord',
-            index === 4
-              ? 'bg-amber-dim group-hover:bg-amber'
-              : index % 2 === 0
-                ? 'bg-line-strong'
-                : 'bg-transparent',
-          )}
-        />
-      ))}
-    </span>
+      {/* Compass points, extending past the ring so the silhouette is not a plain circle. */}
+      <g fill="currentColor">
+        <path d="M32 3 33.5 24 32 27 30.5 24Z" />
+        <path d="M32 61 33.5 40 32 37 30.5 40Z" />
+        <path d="M3 32 24 30.5 27 32 24 33.5Z" />
+        <path d="M61 32 40 30.5 37 32 40 33.5Z" />
+      </g>
+
+      <circle cx="32" cy="32" r="21" stroke="currentColor" strokeWidth="2.4" />
+
+      {/* Beacon: lamp, tapered tower, base. */}
+      <g fill="currentColor">
+        <circle cx="32" cy="20.5" r="3.1" />
+        <path d="M29.4 24.5h5.2l2 17.5h-9.2Z" />
+        <rect x="25.4" y="42" width="13.2" height="2.6" rx="0.8" />
+      </g>
+
+      {/* Water as two bars. At this size a drawn wave becomes noise. */}
+      <g fill="currentColor" opacity="0.78">
+        <rect x="20" y="47.4" width="24" height="2.2" rx="1.1" />
+        <rect x="25" y="51.6" width="14" height="2" rx="1" />
+      </g>
+    </svg>
   );
 }

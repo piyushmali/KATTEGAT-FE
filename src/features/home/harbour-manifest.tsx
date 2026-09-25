@@ -45,6 +45,18 @@ const ARRIVALS_QUERY = {
   direction: 'desc',
   resolvedOnly: true,
   hasEndpoint: true,
+  /*
+   * The same default `/discover` uses, and it belongs here most of all.
+   *
+   * Without it this panel showed the newest agents clearing the two filters above, which on the
+   * live registry meant "Wilson", "coolg", "idol", "flying elephant", "dis" — every row labelled
+   * Unclassified, on the first screen anyone sees. Resolving a registration file and declaring an
+   * endpoint turns out to be a low bar that a throwaway registration clears.
+   *
+   * It also stopped the landing page and the marketplace agreeing: a visitor met six unclassified
+   * agents here, then opened `/discover` and saw a different catalogue entirely.
+   */
+  classifiedOnly: true,
 } as const;
 
 /** Five rows fit the fold at every height worth designing for; the sixth is the shared cache's. */

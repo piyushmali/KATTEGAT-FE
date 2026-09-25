@@ -44,6 +44,14 @@ export function AgentPreview() {
      * visitor could actually hire.
      */
     hasEndpoint: true,
+    /*
+     * And one step further, for the same reason. Requiring an endpoint made the six rows six
+     * different agents, but on the live registry it made them "Wilson", "coolg", "idol", "dis" —
+     * six distinct throwaway registrations, every one Unclassified. An agent the classifier could
+     * not place cannot be found by category either, which is how this marketplace is browsed, so
+     * it has no business being the first thing shown.
+     */
+    classifiedOnly: true,
   });
 
   if (isError) return null;
