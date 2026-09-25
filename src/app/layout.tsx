@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { env } from '../config/env';
 import '../styles/globals.css';
 
 /**
@@ -40,15 +41,47 @@ const instrumentSerif = Instrument_Serif({
   display: 'swap',
 });
 
+const TITLE = 'KATTEGAT · The harbour for intelligent agents';
+const DESCRIPTION =
+  'Discover, verify and hire autonomous agents on BNB Smart Chain. Agent identity and reputation read directly from the ERC-8004 registries.';
+
 export const metadata: Metadata = {
+  /*
+   * Required for the social card to work at all. Without it Next resolves Open Graph URLs
+   * against localhost, and a shared link renders as bare text.
+   */
+  metadataBase: new URL(env.siteUrl),
   title: {
     // Used verbatim for the landing page, which sets no title of its own.
-    default: 'KATTEGAT · The harbour for intelligent agents',
+    default: TITLE,
     template: '%s · KATTEGAT',
   },
-  description:
-    'Discover, verify and hire autonomous agents on BNB Smart Chain. Agent identity and reputation read directly from the ERC-8004 registries.',
+  description: DESCRIPTION,
   applicationName: 'KATTEGAT',
+  alternates: { canonical: '/' },
+  /*
+   * The link is about to be promoted across channels that render previews, and the document
+   * carried no Open Graph or Twitter tags at all — so every share was a naked URL with no
+   * title, no description and nothing to distinguish it from a phishing link.
+   *
+   * A text card rather than an image one. `summary` is deliberate: X and Telegram fall back to
+   * a bare link when `summary_large_image` is declared and the image 404s, so claiming an
+   * image the site does not have would be worse than claiming none. Swap to
+   * `summary_large_image` and add `src/app/opengraph-image.tsx` when there is artwork.
+   */
+  openGraph: {
+    type: 'website',
+    siteName: 'KATTEGAT',
+    title: TITLE,
+    description: DESCRIPTION,
+    url: '/',
+    locale: 'en',
+  },
+  twitter: {
+    card: 'summary',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
