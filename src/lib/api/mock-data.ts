@@ -549,6 +549,18 @@ export function mockListAgents(params: ListAgentsParams) {
   if (params.resolvedOnly === true) {
     rows = rows.filter((row) => row.profile.metadata_resolved_at !== null);
   }
+  /*
+   * These two were missing while the real API applied both by default, so mock mode showed a
+   * looser result set than the product ever does — which is the one thing a fixture must not
+   * do. `unconfigured` is the tag for "declared no interface", matching the backend's
+   * inequality rather than an allow-list of protocols.
+   */
+  if (params.hasEndpoint === true) {
+    rows = rows.filter((row) => row.profile.protocol_tag !== 'unconfigured');
+  }
+  if (params.classifiedOnly === true) {
+    rows = rows.filter((row) => row.categories.some((c) => c.category !== 'uncategorized'));
+  }
 
   const direction = params.direction === 'asc' ? 1 : -1;
   rows.sort((a, b) => {

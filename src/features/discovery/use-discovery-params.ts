@@ -61,6 +61,8 @@ export interface DiscoveryState {
   resolvedOnly: boolean;
   /** Only agents that published an interface. On by default; see the note in the parser. */
   hasEndpoint: boolean;
+  /** Only agents the classifier placed in a category. On by default; see the parser. */
+  classifiedOnly: boolean;
   sort: SortValue;
   page: number;
 }
@@ -127,6 +129,23 @@ export function useDiscoveryParams() {
        * have their own chip, and every count reflects the filter in force.
        */
       hasEndpoint: searchParams.get('endpoint') !== '0',
+      /*
+       * On by default, third in the same family as the two above and for the same measured
+       * reason. Those two leave 88,057 agents, which sounded like enough until the newest
+       * 24 were actually read: 20 of them were `uncategorized`, named "Test", "cat", "flop",
+       * "coolg", "dead pool". Resolving metadata and declaring an endpoint turns out to be a
+       * low bar — a throwaway registration clears both.
+       *
+       * The cut is the largest of the three, 88,057 down to 6,191, and it is the one that
+       * makes the grid answer the question the product is about. This marketplace is browsed
+       * by category; an agent the classifier could not place cannot be found that way, so it
+       * was occupying the front page while being unreachable by the main navigation. With
+       * this on, all four campaign categories appear above the fold.
+       *
+       * Hides nothing. The toggle is in the filter panel, `uncategorized` is still selectable
+       * as a category in its own right, and every count reflects the filter in force.
+       */
+      classifiedOnly: searchParams.get('classified') !== '0',
       sort: isSort(rawSort) ? rawSort : 'registered_at',
       page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
     };
@@ -159,6 +178,7 @@ export function useDiscoveryParams() {
       // Inverted, so the default state leaves no parameter in the URL at all.
       if ('resolvedOnly' in patch) setOrDelete('resolved', patch.resolvedOnly ? null : '0');
       if ('hasEndpoint' in patch) setOrDelete('endpoint', patch.hasEndpoint ? null : '0');
+      if ('classifiedOnly' in patch) setOrDelete('classified', patch.classifiedOnly ? null : '0');
       if ('traits' in patch) {
         next.delete('trait');
         for (const trait of patch.traits ?? []) next.append('trait', trait);
@@ -201,7 +221,8 @@ export function useDiscoveryParams() {
     state.protocol !== null ||
     state.traits.length > 0 ||
     !state.resolvedOnly ||
-    !state.hasEndpoint;
+    !state.hasEndpoint ||
+    !state.classifiedOnly;
 
   /** Maps URL state onto the API's parameter names. */
   const queryParams = useMemo<ListAgentsParams>(() => {
@@ -220,6 +241,16 @@ export function useDiscoveryParams() {
     // Redundant alongside an explicit protocol, which already implies an endpoint, and sending
     // it anyway would put a parameter in the request that the chip selection contradicts.
     if (state.hasEndpoint && state.protocol === null) params.hasEndpoint = true;
+    /*
+     * Dropped whenever a category is named, and that is load bearing rather than tidiness.
+     *
+     * `uncategorized` is a real, selectable category — the classifier assigns it deliberately
+     * so unplaced agents stay visible. Sending `classified_only=true` alongside
+     * `category=uncategorized` asks for agents that both have and do not have a category, which
+     * is an empty page for a chip the user just clicked. Naming any other category already
+     * implies classified, so there is nothing to send in either case.
+     */
+    if (state.classifiedOnly && state.category === null) params.classifiedOnly = true;
     return params;
   }, [state]);
 

@@ -86,6 +86,9 @@ function buildQuery(params: ListAgentsParams): string {
   for (const trait of params.trait ?? []) search.append('trait', trait);
   if (params.resolvedOnly !== undefined) search.set('resolved_only', String(params.resolvedOnly));
   if (params.hasEndpoint !== undefined) search.set('has_endpoint', String(params.hasEndpoint));
+  if (params.classifiedOnly !== undefined) {
+    search.set('classified_only', String(params.classifiedOnly));
+  }
   if (params.minConfidence !== undefined) search.set('min_confidence', String(params.minConfidence));
   if (params.sort) search.set('sort', params.sort);
   if (params.direction) search.set('direction', params.direction);

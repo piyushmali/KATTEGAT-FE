@@ -663,6 +663,8 @@ export interface ListAgentsParams {
   resolvedOnly?: boolean;
   /** Only agents that published an interface. Distinct from `protocol`, which picks one. */
   hasEndpoint?: boolean;
+  /** Only agents the classifier placed in a category. Not the same as naming one. */
+  classifiedOnly?: boolean;
   minConfidence?: number;
   sort?: 'registered_at' | 'reputation' | 'name' | 'feedback';
   direction?: 'asc' | 'desc';

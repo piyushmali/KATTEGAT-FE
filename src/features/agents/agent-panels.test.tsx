@@ -39,9 +39,10 @@ const baseState: DiscoveryState = {
   category: null,
   protocol: null,
   traits: [],
-  // The discovery view's defaults: complete records, and something to call.
+  // The discovery view's defaults: complete records, something to call, and a category.
   resolvedOnly: true,
   hasEndpoint: true,
+  classifiedOnly: true,
   sort: 'registered_at',
   page: 1,
 };
@@ -388,6 +389,61 @@ describe('AgentFilters', () => {
     );
 
     expect(screen.getByRole('button', { name: /filters\s*1/i })).toBeInTheDocument();
+  });
+
+  it('states that the grid is filtered to classified agents', () => {
+    /*
+     * The default removes the large majority of the registry — 88,057 agents down to 6,191 on
+     * the live catalogue. A visitor comparing this count against the indexed total on the
+     * landing page has to be able to see why they differ, or the marketplace looks like it
+     * lost most of its agents.
+     */
+    render(
+      <AgentFilters
+        state={baseState}
+        categories={categories}
+        totalForQuery={6}
+        hasFilters={false}
+        onUpdate={noop}
+        onToggleTrait={noop}
+        onClear={noop}
+      />,
+    );
+
+    expect(screen.getByText('classified')).toBeInTheDocument();
+  });
+
+  it('does not offer the unclassified toggle while a category is selected', () => {
+    /*
+     * `uncategorized` is a real, selectable category, so the two controls can contradict:
+     * asking for a category *and* for classified-only would request agents that both have and
+     * do not have a category — an empty grid for a chip the user just clicked.
+     *
+     * The hook drops `classified_only` whenever a category is named, so the toggle genuinely
+     * does nothing in that state. Disabled rather than hidden, so it does not vanish from under
+     * the cursor, and disabled rather than inert so the reason reaches a screen reader.
+     */
+    let updates = 0;
+    render(
+      <AgentFilters
+        state={{ ...baseState, category: 'uncategorized' }}
+        categories={categories}
+        totalForQuery={6}
+        hasFilters
+        onUpdate={() => {
+          updates += 1;
+        }}
+        onToggleTrait={noop}
+        onClear={noop}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^filters/i }));
+    const toggle = screen.getByRole('button', { name: /include unclassified/i });
+    expect(toggle).toBeDisabled();
+
+    fireEvent.click(toggle);
+    expect(updates).toBe(0);
   });
 
   it('marks the selected category as pressed for assistive technology', () => {

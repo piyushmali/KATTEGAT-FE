@@ -69,7 +69,8 @@ export function AgentFilters({
    * Protocol is excluded now that it has its own visible row, and `resolvedOnly` counts
    * when it is off, because on is the default.
    */
-  const advancedCount = state.traits.length + (state.resolvedOnly ? 0 : 1);
+  const advancedCount =
+    state.traits.length + (state.resolvedOnly ? 0 : 1) + (state.classifiedOnly ? 0 : 1);
 
   const activeCategory = (categories ?? []).find((category) => category.id === state.category);
 
@@ -107,6 +108,19 @@ export function AgentFilters({
               /
             </span>
             <span>{state.hasEndpoint && state.protocol === null ? 'with an endpoint' : 'any interface'}</span>
+            {/*
+             * Stated so the count is never unexplained. The filter removes the large majority
+             * of the registry, so a visitor comparing this number against the indexed total on
+             * the landing page has to be able to see why they differ.
+             */}
+            <span className="text-line-strong" aria-hidden="true">
+              /
+            </span>
+            <span>
+              {state.classifiedOnly && state.category === null
+                ? 'classified'
+                : 'including unclassified'}
+            </span>
             {isRefetching ? <InlineSpinner label="Updating" /> : null}
           </p>
         </div>
@@ -337,6 +351,28 @@ export function AgentFilters({
               {state.resolvedOnly ? null : <Check className="size-2.5" aria-hidden="true" />}
               Include partial records
             </Chip>
+            {/*
+             * Same opt-in phrasing as its neighbour, and in the same group because it answers
+             * the same question — how complete does a record have to be to appear. Disabled
+             * once a category is named: the request drops `classified_only` then, so leaving it
+             * clickable would show a toggle that changes nothing.
+             */}
+            <Chip
+              size="sm"
+              active={!state.classifiedOnly}
+              disabled={state.category !== null}
+              title={
+                state.category === null
+                  ? 'Also show agents the classifier could not place in any category. Their on-chain identity is verified, but they cannot be found by browsing a category.'
+                  : 'Not applicable while a category is selected — you are already browsing by classification.'
+              }
+              onClick={() => {
+                onUpdate({ classifiedOnly: !state.classifiedOnly });
+              }}
+            >
+              {state.classifiedOnly ? null : <Check className="size-2.5" aria-hidden="true" />}
+              Include unclassified
+            </Chip>
           </FilterGroup>
         </div>
       ) : null}
@@ -425,6 +461,7 @@ function Chip({
   title,
   muted,
   size = 'md',
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
@@ -433,22 +470,34 @@ function Chip({
   title?: string;
   muted?: boolean;
   size?: 'sm' | 'md';
+  /**
+   * For a filter that is real but inapplicable in the current combination.
+   *
+   * A genuinely disabled button rather than one that renders inert, so the reason reaches a
+   * screen reader and keyboard focus skips it instead of landing on a control that does
+   * nothing. `title` carries the explanation in both states.
+   */
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
+      disabled={disabled}
       // Selection is announced, not just coloured.
       aria-pressed={active}
       className={cn(
         'inline-flex items-center gap-1.5 rounded-control border font-medium transition-colors',
         size === 'sm' ? 'px-2 py-1 text-3xs' : 'px-2.5 py-1.5 text-2xs',
-        active
-          ? 'border-amber-dim bg-amber-wash/50 text-amber'
-          : muted
-            ? 'border-line bg-transparent text-ink-faint hover:bg-surface-raised hover:text-ink-muted'
-            : 'border-line bg-surface-raised text-ink-secondary hover:bg-surface-overlay hover:text-ink',
+        disabled && 'cursor-not-allowed border-dashed border-line text-ink-faint opacity-60',
+        disabled
+          ? null
+          : active
+            ? 'border-amber-dim bg-amber-wash/50 text-amber'
+            : muted
+              ? 'border-line bg-transparent text-ink-faint hover:bg-surface-raised hover:text-ink-muted'
+              : 'border-line bg-surface-raised text-ink-secondary hover:bg-surface-overlay hover:text-ink',
       )}
     >
       {children}
