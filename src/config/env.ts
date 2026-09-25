@@ -23,6 +23,20 @@ const envSchema = z.object({
    * there matters.
    */
   NEXT_PUBLIC_SITE_URL: z.url().default('https://kattegat.xyz'),
+  /**
+   * Which chain hiring settles on, for the footer to state on every page.
+   *
+   * The hiring panel already gets this from the API, which stays the source of truth for anything
+   * that signs a transaction — nothing here decides behaviour. This exists only so a server-rendered
+   * footer can name the network without shipping the wallet SDK to every page, and so the statement
+   * survives with JavaScript disabled, which is how a reviewer may well see it.
+   *
+   * The cost of a second copy is that it can disagree with the backend. It defaults to the same
+   * value `ALTANA_NETWORK` defaults to, so they only diverge if someone changes one and not the
+   * other — and the direction that matters, a mainnet backend still described as testnet, is the
+   * one to check when going live.
+   */
+  NEXT_PUBLIC_HIRING_NETWORK: z.enum(['bnb', 'bnb-testnet']).default('bnb-testnet'),
 });
 
 function parse() {
@@ -31,6 +45,7 @@ function parse() {
     NEXT_PUBLIC_DATA_SOURCE: process.env.NEXT_PUBLIC_DATA_SOURCE,
     NEXT_PUBLIC_BSC_RPC_URL: process.env.NEXT_PUBLIC_BSC_RPC_URL,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NEXT_PUBLIC_HIRING_NETWORK: process.env.NEXT_PUBLIC_HIRING_NETWORK,
   });
 
   if (!result.success) {
@@ -50,6 +65,7 @@ export const env = {
   dataSource: parsed.NEXT_PUBLIC_DATA_SOURCE,
   bscRpcUrl: parsed.NEXT_PUBLIC_BSC_RPC_URL,
   siteUrl: parsed.NEXT_PUBLIC_SITE_URL.replace(/\/$/, ''),
+  hiringNetwork: parsed.NEXT_PUBLIC_HIRING_NETWORK,
 } as const;
 
 export const isMockMode = env.dataSource === 'mock';

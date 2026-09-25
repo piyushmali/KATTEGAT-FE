@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sessionTargetsFor } from './chain';
+import { describeHiringNetwork, sessionTargetsFor } from './chain';
 import { networkFor } from './agent-authority';
 
 /**
@@ -65,6 +65,46 @@ describe('sessionTargetsFor', () => {
         expect(target.note).not.toBe('');
         expect(target.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
       }
+    }
+  });
+});
+
+/**
+ * Which chain hiring settles on, stated rather than implied.
+ *
+ * Two chains do two jobs and the difference decides whether a hire costs real money. The default
+ * matters most: an unknown or missing value must read as testnet, because the failure that costs
+ * something is a mainnet deployment described as a test network, not the reverse.
+ */
+describe('describeHiringNetwork', () => {
+  it('names mainnet only for the exact mainnet key, and flags it as live', () => {
+    expect(describeHiringNetwork('bnb')).toEqual({
+      label: 'BNB Smart Chain',
+      chainId: 56,
+      live: true,
+    });
+  });
+
+  it('names testnet and does not flag it as live', () => {
+    expect(describeHiringNetwork('bnb-testnet')).toEqual({
+      label: 'BNB Smart Chain Testnet',
+      chainId: 97,
+      live: false,
+    });
+  });
+
+  it('treats anything unrecognised as testnet rather than as live funds', () => {
+    for (const name of ['', 'BNB', 'bnb-mainnet', 'mainnet', 'nonsense']) {
+      expect(describeHiringNetwork(name).live, `"${name}" must not read as live`).toBe(false);
+      expect(describeHiringNetwork(name).chainId).toBe(97);
+    }
+  });
+
+  it('agrees with networkFor about which name means mainnet', () => {
+    // Same input, same test, same default — so the chain that signs and the chain the footer
+    // prints cannot disagree.
+    for (const name of ['bnb', 'bnb-testnet', '', 'whatever']) {
+      expect(describeHiringNetwork(name).chainId).toBe(networkFor(name).chain.id);
     }
   });
 });

@@ -9,7 +9,12 @@ import { InlineSpinner, Skeleton } from '../../components/ui/states';
 import { describeWeb3Error } from '../../lib/api/errors';
 import { formatDate } from '../../lib/utils/format';
 import { sessionTargetsFor, truncateAddress } from '../../lib/web3/chain';
-import type { AgentSession, SpendPeriod } from '../../lib/api/contract';
+import {
+  displayCategory,
+  type AgentCategoryAssignment,
+  type AgentSession,
+  type SpendPeriod,
+} from '../../lib/api/contract';
 import { supportsPasskeys } from '../../lib/web3/agent-authority';
 import { CommissionForm } from './commission-form';
 import { useAgentSessions, useHireAgent, useRevokeAgent } from './use-hiring';
@@ -65,11 +70,20 @@ const SPEND_PERIOD: SpendPeriod = 'day';
 export function HiringPanel({
   agentId,
   agentName,
+  categories,
   providerAddress,
   weight = 'default',
 }: {
   agentId: string;
   agentName: string;
+  /**
+   * The agent's category assignments, so the panel can name what is being hired.
+   *
+   * The header already shows this, but the header is not where the decision is taken. A user
+   * scrolled to the grant form is about to authorise spending against an agent, and "which kind of
+   * agent is this" is part of that decision — particularly when the answer is "we could not tell".
+   */
+  categories: AgentCategoryAssignment[];
   weight?: PanelWeight;
   /**
    * The agent's own wallet address, which is how the escrow kernel names it as a provider.
@@ -100,6 +114,7 @@ export function HiringPanel({
   const live = sessions.filter((session) => session.status === 'active');
   const past = sessions.filter((session) => session.status !== 'active');
 
+  const agentCategory = displayCategory(categories);
   const presetTargets = sessionTargetsFor(context?.network ?? '');
 
   /*
@@ -150,10 +165,7 @@ export function HiringPanel({
          * decoration announcing a sentence that is perfectly capable of announcing itself.
          */}
         <p className="display flex items-start gap-2.5 text-lg leading-snug text-ink">
-          <ShieldCheck
-            className="mt-1 size-4 shrink-0 text-amber"
-            aria-hidden="true"
-          />
+          <ShieldCheck className="mt-1 size-4 shrink-0 text-amber" aria-hidden="true" />
           <span>
             Scoped authority, <em>not</em> wallet access
           </span>
@@ -188,9 +200,9 @@ export function HiringPanel({
         ) : (
           <>
             <p className="mt-2.5 text-xs leading-6 text-ink-muted">
-              Grant {agentName} a session bounded by the three limits below. They are enforced
-              by the Altana account contract on chain, so they hold even if KATTEGAT stops
-              running, and you can revoke in one transaction at any time.
+              Grant {agentName} a session bounded by the three limits below. They are enforced by
+              the Altana account contract on chain, so they hold even if KATTEGAT stops running, and
+              you can revoke in one transaction at any time.
             </p>
 
             {/*
@@ -211,10 +223,10 @@ export function HiringPanel({
              * error state uses, so "read this" looks the same wherever it appears.
              */}
             <p className="mt-4 border-l-2 border-amber-dim/60 pl-3.5 text-2xs leading-5 text-ink-muted">
-              Your authority stays in this device. Hiring creates a passkey held in your
-              hardware, and every grant and revocation is signed there behind Face ID, Touch ID
-              or Windows Hello. KATTEGAT&rsquo;s servers never hold it and cannot grant or
-              revoke on your behalf.
+              Your authority stays in this device. Hiring creates a passkey held in your hardware,
+              and every grant and revocation is signed there behind Face ID, Touch ID or Windows
+              Hello. KATTEGAT&rsquo;s servers never hold it and cannot grant or revoke on your
+              behalf.
               {context.gasSponsored ? ' We cover the gas for your first grant.' : ''}
               {/*
                * Stated here because this is where the question arises. The header's "Connect"
@@ -236,8 +248,8 @@ export function HiringPanel({
                  */
                 className="mt-3 rounded-control border border-caution/30 bg-caution-wash/15 px-3.5 py-2.5 text-2xs leading-5 text-caution"
               >
-                Mainnet. Real funds. The spend ceiling below is the most this agent can ever
-                move, so set it to an amount you would be comfortable losing.
+                Mainnet. Real funds. The spend ceiling below is the most this agent can ever move,
+                so set it to an amount you would be comfortable losing.
               </p>
             ) : (
               <p className="mt-2.5 text-2xs leading-5 text-ink-faint">
@@ -245,6 +257,30 @@ export function HiringPanel({
                 risk, but every transaction below is genuine and verifiable on chain.
               </p>
             )}
+
+            {/*
+             * What is being hired, stated where the hire happens.
+             *
+             * An unclassified agent is the case that matters. KATTEGAT could not place it from its
+             * declared capabilities, which means nothing downstream that reasons about categories
+             * — filters, comparisons, any campaign that counts hires by category — will recognise
+             * it. A user who cannot see that before approving finds out afterwards, or never, and
+             * the flow gives no hint because the grant itself succeeds perfectly well.
+             */}
+            <p className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-2xs leading-5">
+              <span className="text-ink-faint">Category</span>
+              {agentCategory.classified ? (
+                <span className="text-amber/85">{agentCategory.label}</span>
+              ) : (
+                <>
+                  <span className="text-ink-muted">Unclassified</span>
+                  <span className="text-ink-faint">
+                    — KATTEGAT could not place this agent from its declared capabilities, so it will
+                    not appear under any category.
+                  </span>
+                </>
+              )}
+            </p>
 
             {/*
              * What a grant is, and what it is not yet.
@@ -258,8 +294,8 @@ export function HiringPanel({
              */}
             <p className="mt-2.5 text-2xs leading-5 text-ink-faint">
               This grants and records the authority, and proves it in the public Keystore. Handing
-              the session to {agentName} so it can act is not wired up yet, so nothing will move
-              on its own.
+              the session to {agentName} so it can act is not wired up yet, so nothing will move on
+              its own.
             </p>
 
             {/* ------------------------------ the terms ------------------------------ */}
@@ -283,8 +319,7 @@ export function HiringPanel({
                   ))}
                 </div>
                 <p className="mt-2 text-3xs leading-5 text-ink-faint">
-                  Per day, rolling. The agent cannot exceed this, in any single call or in
-                  total.
+                  Per day, rolling. The agent cannot exceed this, in any single call or in total.
                 </p>
               </fieldset>
 
@@ -318,10 +353,7 @@ export function HiringPanel({
                 </legend>
                 <div className="mt-2.5 space-y-2">
                   {presetTargets.map((preset) => (
-                    <label
-                      key={preset.address}
-                      className="flex cursor-pointer items-start gap-2.5"
-                    >
+                    <label key={preset.address} className="flex cursor-pointer items-start gap-2.5">
                       <input
                         type="checkbox"
                         checked={targets.includes(preset.address)}
@@ -347,8 +379,8 @@ export function HiringPanel({
                  */}
                 {targets.length === 0 ? (
                   <p role="alert" className="mt-2 text-3xs leading-5 text-caution">
-                    Choose at least one. A session with no named contract would be authorised
-                    for all of them.
+                    Choose at least one. A session with no named contract would be authorised for
+                    all of them.
                   </p>
                 ) : null}
               </fieldset>
@@ -372,7 +404,11 @@ export function HiringPanel({
                   });
                 }}
               >
-                {hire.isPending ? <InlineSpinner label="Waiting for your approval" /> : 'Hire agent'}
+                {hire.isPending ? (
+                  <InlineSpinner label="Waiting for your approval" />
+                ) : (
+                  'Hire agent'
+                )}
               </Button>
 
               {/*
@@ -524,7 +560,8 @@ function SessionRow({
     <li className="rounded-card border border-line bg-surface-inset p-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-xs font-medium text-ink">
-          {capNative} {nativeSymbol}<span className="text-ink-faint"> / {session.spendPeriod}</span>
+          {capNative} {nativeSymbol}
+          <span className="text-ink-faint"> / {session.spendPeriod}</span>
         </span>
         <Badge tone="positive">Active</Badge>
       </div>

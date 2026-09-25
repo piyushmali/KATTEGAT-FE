@@ -129,9 +129,7 @@ export function AgentDetailView({ id }: { id: string }) {
 
             <div className="min-w-0 flex-1">
               {/* Category as an eyebrow above the name, the way a title page is set. */}
-              <p className="eyebrow text-amber/80">
-                {categoryLabel}
-              </p>
+              <p className="eyebrow text-amber/80">{categoryLabel}</p>
 
               {/*
                * The agent's name at display scale. `break-words` because these are
@@ -340,6 +338,7 @@ export function AgentDetailView({ id }: { id: string }) {
               weight="lead"
               agentId={agent.identity.id}
               agentName={agent.profile.name}
+              categories={agent.categories}
               providerAddress={agent.identity.walletAddress}
             />
           </div>

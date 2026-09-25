@@ -1,5 +1,12 @@
 import Link from 'next/link';
-import { ERC8004_ADDRESSES, EXPECTED_CHAIN, explorerUrl } from '../../lib/web3/chain';
+import { env } from '../../config/env';
+import {
+  describeHiringNetwork,
+  ERC8004_ADDRESSES,
+  EXPECTED_CHAIN,
+  EXPECTED_CHAIN_ID,
+  explorerUrl,
+} from '../../lib/web3/chain';
 
 /**
  * Footer.
@@ -7,8 +14,22 @@ import { ERC8004_ADDRESSES, EXPECTED_CHAIN, explorerUrl } from '../../lib/web3/c
  * Doubles as a provenance statement: it names the registries KATTEGAT reads and links
  * them on the explorer, so the central claim — that this is indexed from chain rather
  * than curated by us — is verifiable from any page.
+ *
+ * WHY THE NETWORKS ARE SPELLED OUT HERE
+ *
+ * Two chains do two jobs, and the difference decides whether hiring costs real money: agents are
+ * read from the ERC-8004 registries on BNB Smart Chain, while a hire settles on whichever network
+ * the backend points at. The hiring panel has always shown the second one, but only on an agent
+ * page and only once JavaScript has run — so a reader on the landing page, or a reviewer reading
+ * the served HTML, had no way to tell which network they were looking at.
+ *
+ * This footer is a server component, so both statements are in the initial HTML on every page.
+ * The registry addresses are printed as text as well as linked, because "show the contract
+ * addresses you are reading from" is not satisfied by a link whose label hides them.
  */
 export function SiteFooter() {
+  const hiring = describeHiringNetwork(env.hiringNetwork);
+
   return (
     <footer className="mt-24 border-t border-line">
       <div className="mx-auto max-w-shell px-4 py-14 sm:px-6 lg:px-8">
@@ -21,6 +42,27 @@ export function SiteFooter() {
               identity, capabilities and reputation are read from the ERC-8004 registries.
               Categories are derived by KATTEGAT and always shown with their evidence.
             </p>
+
+            {/*
+             * The network statement. Deliberately plain and deliberately two lines, because the
+             * two chains are not interchangeable: one is where agents are read from, the other is
+             * where money moves.
+             */}
+            <dl className="mt-5 space-y-2 text-3xs leading-5">
+              <div className="flex gap-2">
+                <dt className="shrink-0 text-ink-faint">Agents read from</dt>
+                <dd className="text-ink-muted">
+                  {EXPECTED_CHAIN.name} · chain {EXPECTED_CHAIN_ID}
+                </dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="shrink-0 text-ink-faint">Hiring settles on</dt>
+                <dd className={hiring.live ? 'text-caution' : 'text-ink-muted'}>
+                  {hiring.label} · chain {hiring.chainId}
+                  {hiring.live ? ' · real funds' : ' · test network, no real funds'}
+                </dd>
+              </div>
+            </dl>
           </div>
 
           <div className="grid grid-cols-2 gap-x-10 gap-y-6 sm:grid-cols-3">
@@ -46,9 +88,14 @@ export function SiteFooter() {
               </ul>
             </div>
 
+            {/*
+             * Addresses printed, not just linked. The label "Identity registry" over an href tells
+             * a reader nothing they can check without clicking; the hex is the verifiable part, so
+             * it belongs on the page.
+             */}
             <div>
               <h2 className="eyebrow">Registries</h2>
-              <ul className="mt-3 space-y-2">
+              <ul className="mt-3 space-y-3">
                 <li>
                   <a
                     href={explorerUrl.address(ERC8004_ADDRESSES.identityRegistry)}
@@ -58,6 +105,9 @@ export function SiteFooter() {
                   >
                     Identity registry
                   </a>
+                  <span className="mt-1 block break-all font-mono text-3xs leading-4 text-ink-faint">
+                    {ERC8004_ADDRESSES.identityRegistry}
+                  </span>
                 </li>
                 <li>
                   <a
@@ -68,6 +118,9 @@ export function SiteFooter() {
                   >
                     Reputation registry
                   </a>
+                  <span className="mt-1 block break-all font-mono text-3xs leading-4 text-ink-faint">
+                    {ERC8004_ADDRESSES.reputationRegistry}
+                  </span>
                 </li>
               </ul>
             </div>

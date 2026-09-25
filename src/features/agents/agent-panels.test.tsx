@@ -10,7 +10,7 @@ import { ClassificationEvidence } from './classification-evidence';
 import { CommissionForm } from './commission-form';
 import { EscrowPanel } from './escrow-panel';
 import { formatWei, HiringPanel } from './hiring-panel';
-import type { HiringContext } from '../../lib/api/contract';
+import type { AgentCategoryAssignment, HiringContext } from '../../lib/api/contract';
 import type { DiscoveryState } from '../discovery/use-discovery-params';
 
 /**
@@ -153,8 +153,17 @@ describe('ClassificationEvidence', () => {
 });
 
 describe('HiringPanel', () => {
+  const category = (name: string) =>
+    ({
+      category: name,
+      confidence: 0.9,
+      isPrimary: true,
+      signals: [],
+      classifierVersion: 'test',
+    }) as unknown as AgentCategoryAssignment;
+
   /** The panel reads its state through TanStack Query, so it needs a client. */
-  const renderPanel = () => {
+  const renderPanel = (categories: AgentCategoryAssignment[] = [category('rebalancing')]) => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -164,6 +173,7 @@ describe('HiringPanel', () => {
         <HiringPanel
           agentId="56:900001"
           agentName="Meridian Rebalancer"
+          categories={categories}
           providerAddress={null}
         />
       </QueryClientProvider>,
@@ -504,10 +514,7 @@ describe('AgentInterface', () => {
     renderFor('56:900002');
 
     const link = screen.getByRole('link', { name: /agents\/900002\/services/ });
-    expect(link).toHaveAttribute(
-      'href',
-      'https://tidewater.example/api/v1/agents/900002/services',
-    );
+    expect(link).toHaveAttribute('href', 'https://tidewater.example/api/v1/agents/900002/services');
     // The template must not be what the visitor reads.
     expect(screen.queryByText(/\{agentId\}/)).toBeNull();
     // But the substitution is disclosed rather than passed off as the published value.
@@ -661,7 +668,9 @@ describe('CommissionForm', () => {
 
   it('frames the payment as held by the contract rather than by KATTEGAT', () => {
     renderForm();
-    expect(screen.getByText(/escrow contract holds the payment, never KATTEGAT/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/escrow contract holds the payment, never KATTEGAT/i),
+    ).toBeInTheDocument();
   });
 
   it('does not claim a release it cannot perform', () => {

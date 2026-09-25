@@ -12,6 +12,40 @@ export const EXPECTED_CHAIN = bsc;
 export const EXPECTED_CHAIN_ID = bsc.id;
 
 /**
+ * The networks in play, named so a page can state them rather than imply them.
+ *
+ * Two different chains do two different jobs here, and conflating them misleads in both
+ * directions: agents are read from the ERC-8004 registries on BNB Smart Chain, while hiring
+ * settles wherever the backend's `ALTANA_NETWORK` points — testnet until real funds are intended.
+ * A reader who sees only "BNB Chain" cannot tell whether a hire costs real money.
+ *
+ * Kept as a plain map rather than derived from the Altana SDK because the footer is a server
+ * component, and pulling the SDK in to learn a chain id would ship a wallet library to every page
+ * for the sake of one number.
+ */
+export interface HiringNetwork {
+  label: string;
+  chainId: number;
+  /** True where a mistake costs real money, which is the only reason this flag exists. */
+  live: boolean;
+}
+
+const BNB_MAINNET: HiringNetwork = { label: 'BNB Smart Chain', chainId: 56, live: true };
+const BNB_TESTNET: HiringNetwork = { label: 'BNB Smart Chain Testnet', chainId: 97, live: false };
+
+/**
+ * Anything that is not exactly `bnb` is testnet.
+ *
+ * A ternary rather than a map lookup, for the same reason `sessionTargetsFor` is: indexing a record
+ * yields `| undefined` even with a fallback, and every caller then has to re-check a value that is
+ * guaranteed. It also matches `networkFor` in agent-authority.ts exactly — same input, same `'bnb'`
+ * test, same default — so the chain that signs and the chain that is displayed cannot disagree.
+ */
+export function describeHiringNetwork(name: string): HiringNetwork {
+  return name === 'bnb' ? BNB_MAINNET : BNB_TESTNET;
+}
+
+/**
  * ERC-8004 registries. Deployed at CREATE2-deterministic addresses, so these are
  * byte-identical on every supported mainnet — only the explorer differs.
  *
