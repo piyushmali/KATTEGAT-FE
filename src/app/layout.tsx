@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import type { ReactNode } from 'react';
 import { env } from '../config/env';
 import '../styles/globals.css';
@@ -115,7 +116,23 @@ export default function RootLayout({ children }: { children: ReactNode }) {
        * keeps large areas of near-black from banding, and it gives every surface a
        * faint tooth so the interface reads as a material rather than a colour value.
        */}
-      <body className="grain min-h-dvh antialiased">{children}</body>
+      <body className="grain min-h-dvh antialiased">
+        {children}
+        {/*
+         * Traffic measurement, and the reason it is here for launch rather than after it: the
+         * campaign asks whether this can handle the load, and that is not answerable from an
+         * uptime ping. A ping says the process is alive; this says whether anyone arrived, which
+         * page they opened, and whether they came back.
+         *
+         * Last in the body so it cannot delay first paint, and it self-disables outside
+         * production — no dev traffic in the numbers, and no request at all on localhost.
+         *
+         * Cookieless and collects no personal data, which is what makes it acceptable on a
+         * product whose argument is that it only reports what it can evidence. Nothing here
+         * identifies a visitor, so there is nothing to disclose that the page does not already.
+         */}
+        <Analytics />
+      </body>
     </html>
   );
 }
